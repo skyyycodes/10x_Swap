@@ -82,8 +82,8 @@ export function Header() {
           PharosDEX
         </Link>
 
-        {/* Desktop navigation */}
-        <nav className="hidden md:flex gap-6 lg:gap-8">
+        {/* Desktop navigation - Centered */}
+        <nav className="hidden md:flex gap-6 lg:gap-8 absolute left-1/2 transform -translate-x-1/2">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -102,6 +102,16 @@ export function Header() {
 
         {/* Desktop wallet connect and mode toggle */}
         <div className="hidden md:flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="default" 
+            className="group relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/25 dark:hover:shadow-[#F3C623]/25"
+          >
+            <span className="relative z-10 transition-colors duration-300 group-hover:text-white dark:group-hover:text-black">
+              Auto-Pilot Portfolio
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 dark:from-[#F3C623] dark:to-[#F3C623]/80 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+          </Button>
           <ConnectKitButton.Custom>
             {({ isConnected, show, truncatedAddress }) => (
               <Button onClick={show} variant="outline" size="default">
@@ -146,6 +156,16 @@ export function Header() {
               ))}
             </nav>
             <div className="flex flex-col gap-3 pt-3 border-t">
+              <Button 
+                variant="outline" 
+                size="default" 
+                className="w-full group relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/25 dark:hover:shadow-[#F3C623]/25"
+              >
+                <span className="relative z-10 transition-colors duration-300 group-hover:text-white dark:group-hover:text-black">
+                  Auto-Pilot Portfolio
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 dark:from-[#F3C623] dark:to-[#F3C623]/80 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+              </Button>
               <ConnectKitButton.Custom>
                 {({ isConnected, show, truncatedAddress }) => (
                   <Button onClick={show} variant="outline" size="default" className="w-full">

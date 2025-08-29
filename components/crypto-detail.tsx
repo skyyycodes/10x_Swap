@@ -204,7 +204,7 @@ export function CryptoDetail({ id }: { id: string }) {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3 mb-8">
+      <div className="grid gap-6 md:grid-cols-3 lg:grid-cols-4 mb-8">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">Price</CardTitle>
@@ -243,6 +243,23 @@ export function CryptoDetail({ id }: { id: string }) {
             <div className="text-sm text-muted-foreground">
               {((parseFloat(crypto["24hVolume"]) / parseFloat(crypto.marketCap)) * 100).toFixed(2)}% of market cap
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="flex flex-col justify-center">
+          <CardContent className="pt-6">
+            <Button 
+              className="w-full group relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/25 dark:hover:shadow-[#F3C623]/25"
+              size="lg"
+            >
+              <span className="relative z-10 transition-colors duration-300 group-hover:text-white dark:group-hover:text-black">
+                Add to Auto-Pilot
+              </span>
+              <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 dark:from-[#F3C623] dark:to-[#F3C623]/80 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              Automate your investment strategy
+            </p>
           </CardContent>
         </Card>
       </div>
