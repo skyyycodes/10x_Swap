@@ -8,6 +8,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import { Providers as ExistingProviders } from '@/components/providers'
 import { ReduxProvider } from '../components/redux-provider'
 import { Header } from "@/components/header";
+import { Toaster } from "@/components/ui/toaster";
 
 const fontSans = FontSans({ subsets: ['latin'], variable: '--font-sans' })
 const fontMono = FontMono({ subsets: ['latin'], weight: ['400'], variable: '--font-mono' })
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </ReduxProvider>
         <SpeedInsights />
         <Analytics />
+  <Toaster />
       </body>
     </html>
   )

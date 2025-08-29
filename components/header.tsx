@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import RuleBuilderModal from "@/components/rule-builder-modal";
+import { toast } from "@/hooks/use-toast";
 import { ModeToggle } from "@/components/mode-toggle";
 import { ConnectKitButton } from "connectkit";
 import { cn } from "@/lib/utils";
@@ -13,6 +15,7 @@ import { useViewport } from "@/hooks/use-viewport";
 export function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [rules, setRules] = useState<any[]>([]);
   const { isMobile } = useViewport();
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const modeToggleRef = useRef<HTMLDivElement>(null);
@@ -74,6 +77,33 @@ export function Header() {
     { name: "Exchanges", href: "/exchanges" },
   ];
 
+  const describeRule = (rule: any) => {
+    const { strategy, coins = [], triggerType } = rule || {}
+    const coinList = coins.join(", ") || (rule.rotateTopN ? `Top ${rule.rotateTopN}` : "coins")
+    let triggerText = ""
+    if (triggerType === "priceDrop") triggerText = `on a ${rule.dropPercent}% drop`
+    if (triggerType === "trend") triggerText = `when ${rule.trendWindow} trend exceeds ${rule.trendThreshold}%`
+    if (triggerType === "momentum") triggerText = `when momentum(${rule.momentumLookback}d) > ${rule.momentumThreshold}%`
+    const action = strategy === "DCA" ? "DCA buy" : strategy === "REBALANCE" ? "rebalance" : "rotate"
+    return `${action} ${coinList} ${triggerText}. Limits: $${rule.maxSpendUsd}, slippage ${rule.maxSlippagePercent}%, cooldown ${rule.cooldownMinutes}m.`
+  }
+
+  const saveRule = async (rule: any) => {
+    setRules((prev) => [rule, ...prev])
+    try {
+      const res = await fetch("/api/rules", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(rule),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const json = await res.json()
+      setRules((prev) => [{ ...rule, id: json.id }, ...prev.filter((r) => r !== rule)])
+    } catch (e) {
+      console.error("Failed to save rule:", e)
+    }
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur dark:bg-[#171717]/95 shadow">
       <div className="container flex h-16 items-center justify-between">
@@ -102,16 +132,27 @@ export function Header() {
 
         {/* Desktop wallet connect and mode toggle */}
         <div className="hidden md:flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="default" 
-            className="group relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/25 dark:hover:shadow-[#F3C623]/25"
-          >
-            <span className="relative z-10 transition-colors duration-300 group-hover:text-white dark:group-hover:text-black">
-              Auto-Pilot Portfolio
-            </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 dark:from-[#F3C623] dark:to-[#F3C623]/80 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-          </Button>
+          <RuleBuilderModal
+            trigger={
+              <Button 
+                variant="outline" 
+                size="default" 
+                className="group relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/25 dark:hover:shadow-[#F3C623]/25"
+              >
+                <span className="relative z-10 transition-colors duration-300 group-hover:text-white dark:group-hover:text-black">
+                  Auto-Pilot Portfolio
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 dark:from-[#F3C623] dark:to-[#F3C623]/80 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+              </Button>
+            }
+            onPreview={(rule) => {
+              toast({ title: "Preview", description: describeRule(rule) })
+            }}
+            onSave={(rule) => {
+              saveRule(rule)
+              toast({ title: "Rule saved", description: describeRule(rule) })
+            }}
+          />
           <ConnectKitButton.Custom>
             {({ isConnected, show, truncatedAddress }) => (
               <Button onClick={show} variant="outline" size="default">
@@ -156,16 +197,27 @@ export function Header() {
               ))}
             </nav>
             <div className="flex flex-col gap-3 pt-3 border-t">
-              <Button 
-                variant="outline" 
-                size="default" 
-                className="w-full group relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/25 dark:hover:shadow-[#F3C623]/25"
-              >
-                <span className="relative z-10 transition-colors duration-300 group-hover:text-white dark:group-hover:text-black">
-                  Auto-Pilot Portfolio
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 dark:from-[#F3C623] dark:to-[#F3C623]/80 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
-              </Button>
+              <RuleBuilderModal
+                trigger={
+                  <Button 
+                    variant="outline" 
+                    size="default" 
+                    className="w-full group relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/25 dark:hover:shadow-[#F3C623]/25"
+                  >
+                    <span className="relative z-10 transition-colors duration-300 group-hover:text-white dark:group-hover:text-black">
+                      Auto-Pilot Portfolio
+                    </span>
+                    <div className="absolute inset-0 bg-gradient-to-r from-primary to-primary/80 dark:from-[#F3C623] dark:to-[#F3C623]/80 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+                  </Button>
+                }
+                onPreview={(rule) => {
+                  toast({ title: "Preview", description: describeRule(rule) })
+                }}
+                onSave={(rule) => {
+                  saveRule(rule)
+                  toast({ title: "Rule saved", description: describeRule(rule) })
+                }}
+              />
               <ConnectKitButton.Custom>
                 {({ isConnected, show, truncatedAddress }) => (
                   <Button onClick={show} variant="outline" size="default" className="w-full">
