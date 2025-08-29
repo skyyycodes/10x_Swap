@@ -12,6 +12,8 @@ import { useAccount } from "wagmi";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
 import { useViewport } from "@/hooks/use-viewport";
+import { describeRule } from "@/lib/shared/rules";
+import { createRule } from "@/features/agent/api/client";
 
 export function Header() {
   const pathname = usePathname();
@@ -80,28 +82,11 @@ export function Header() {
   { name: "Agent", href: "/agent-dashboard" },
   ];
 
-  const describeRule = (rule: any) => {
-    const { strategy, coins = [], triggerType } = rule || {}
-    const coinList = coins.join(", ") || (rule.rotateTopN ? `Top ${rule.rotateTopN}` : "coins")
-    let triggerText = ""
-    if (triggerType === "priceDrop") triggerText = `on a ${rule.dropPercent}% drop`
-    if (triggerType === "trend") triggerText = `when ${rule.trendWindow} trend exceeds ${rule.trendThreshold}%`
-    if (triggerType === "momentum") triggerText = `when momentum(${rule.momentumLookback}d) > ${rule.momentumThreshold}%`
-    const action = strategy === "DCA" ? "DCA buy" : strategy === "REBALANCE" ? "rebalance" : "rotate"
-    return `${action} ${coinList} ${triggerText}. Limits: $${rule.maxSpendUsd}, slippage ${rule.maxSlippagePercent}%, cooldown ${rule.cooldownMinutes}m.`
-  }
-
   const saveRule = async (rule: any) => {
     setRules((prev) => [rule, ...prev])
     try {
-      const res = await fetch("/api/rules", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...rule, ownerAddress: address || "0x0000000000000000000000000000000000000000" }),
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      setRules((prev) => [{ ...rule, id: json.id }, ...prev.filter((r) => r !== rule)])
+  const json = await createRule({ ...rule, ownerAddress: address || "0x0000000000000000000000000000000000000000" })
+  setRules((prev) => [{ ...rule, id: json.id }, ...prev.filter((r) => r !== rule)])
     } catch (e) {
       console.error("Failed to save rule:", e)
     }
