@@ -26,21 +26,21 @@ export function MarketOverview() {
   };
 
   return (
-    <section className="mb-10">
-      <h2 className="text-3xl font-bold tracking-tight mb-6">Market Overview</h2>
+    <section className="mb-8 sm:mb-10">
+      <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4 sm:mb-6">Market Overview</h2>
       
       {error ? (
         <div className="text-center p-6 text-red-500">
           Error loading market data. Please try again later.
         </div>
       ) : isLoading ? (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <LoadingSkeleton />
           <LoadingSkeleton />
           <LoadingSkeleton />
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatsCard
             title="Total Market Cap"
             value={`$${formatMarketCap(stats.totalMarketCap)}`}

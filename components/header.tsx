@@ -2,17 +2,71 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
 import { ConnectKitButton } from "connectkit";
 import { cn } from "@/lib/utils";
-import { useAccount } from "wagmi";
-import { KycVerification } from "@/components/web3/KYC_verification";
+import { Menu, X } from "lucide-react";
+import { useViewport } from "@/hooks/use-viewport";
 
 export function Header() {
   const pathname = usePathname();
-  const { address: userAddress, isConnected } = useAccount();
-  const kycRegistry = process.env.NEXT_PUBLIC_KYC_REGISTRY_ADDRESS!;
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isMobile } = useViewport();
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const modeToggleRef = useRef<HTMLDivElement>(null);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Close mobile menu when clicking outside or pressing escape
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    }
+
+    function handleClickOutside(e: MouseEvent) {
+      const target = e.target as Element;
+      
+      // Don't close if clicking inside mobile menu
+      if (mobileMenuRef.current?.contains(target)) {
+        return;
+      }
+      
+      // Don't close if clicking on mode toggle or its dropdown
+      if (modeToggleRef.current?.contains(target)) {
+        return;
+      }
+      
+      // Don't close if clicking on any dropdown menu content (Radix UI portals)
+      if (target.closest('[role="menu"]') || 
+          target.closest('[data-radix-dropdown-menu-content]') ||
+          target.closest('[data-radix-popper-content-wrapper]')) {
+        return;
+      }
+      
+      setMobileMenuOpen(false);
+    }
+
+    if (mobileMenuOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.addEventListener('mousedown', handleClickOutside);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
 
   const navItems = [
     { name: "Home", href: "/" },
@@ -23,31 +77,31 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur dark:bg-[#171717]/95 shadow">
       <div className="container flex h-16 items-center justify-between">
-        {/* Logo & nav */}
-        <div className="flex items-center gap-6 md:gap-10">
-          <Link href="/" className="font-bold text-lg">
-            PharosDEX
-          </Link>
-          <nav className="flex gap-4">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "text-sm font-medium transition-colors",
-                  pathname === item.href
-                    ? "text-primary dark:text-[#F3C623] underline"
-                    : "text-gray-700 hover:text-primary dark:text-[#F3C623]/60 dark:hover:text-[#F3C623]"
-                )}
-              >
-                {item.name}
-              </Link>
-            ))}
-          </nav>
-        </div>
+        {/* Logo */}
+        <Link href="/" className="font-bold text-lg md:text-xl">
+          PharosDEX
+        </Link>
 
-        {/* Wallet connect, KYC, and mode toggle */}
-        <div className="flex items-center gap-2">
+        {/* Desktop navigation */}
+        <nav className="hidden md:flex gap-6 lg:gap-8">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "text-sm font-medium transition-colors",
+                pathname === item.href
+                  ? "text-primary dark:text-[#F3C623] underline"
+                  : "text-gray-700 hover:text-primary dark:text-[#F3C623]/60 dark:hover:text-[#F3C623]"
+              )}
+            >
+              {item.name}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Desktop wallet connect and mode toggle */}
+        <div className="hidden md:flex items-center gap-2">
           <ConnectKitButton.Custom>
             {({ isConnected, show, truncatedAddress }) => (
               <Button onClick={show} variant="outline" size="default">
@@ -55,17 +109,59 @@ export function Header() {
               </Button>
             )}
           </ConnectKitButton.Custom>
-
-          {isConnected && userAddress && (
-            <KycVerification
-              contractAddress={kycRegistry}
-              userAddress={userAddress}
-            />
-          )}
-
           <ModeToggle />
         </div>
+
+        {/* Mobile menu button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle mobile menu"
+        >
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </Button>
       </div>
+
+      {/* Mobile menu */}
+      {mobileMenuOpen && (
+        <div ref={mobileMenuRef} className="mobile-menu md:hidden border-t bg-white/95 backdrop-blur dark:bg-[#171717]/95 absolute w-full z-40">
+          <div className="container py-4 space-y-4">
+            <nav className="flex flex-col space-y-3">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "text-sm font-medium transition-colors py-2 px-2 rounded-md",
+                    pathname === item.href
+                      ? "text-primary dark:text-[#F3C623] bg-primary/10 dark:bg-[#F3C623]/10"
+                      : "text-gray-700 hover:text-primary hover:bg-primary/5 dark:text-[#F3C623]/60 dark:hover:text-[#F3C623] dark:hover:bg-[#F3C623]/5"
+                  )}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </nav>
+            <div className="flex flex-col gap-3 pt-3 border-t">
+              <ConnectKitButton.Custom>
+                {({ isConnected, show, truncatedAddress }) => (
+                  <Button onClick={show} variant="outline" size="default" className="w-full">
+                    {isConnected ? truncatedAddress : "Connect Wallet"}
+                  </Button>
+                )}
+              </ConnectKitButton.Custom>
+              <div className="flex justify-center">
+                <div ref={modeToggleRef} data-theme-toggle>
+                  <ModeToggle />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
