@@ -5,10 +5,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const now = new Date().toISOString()
-    const { ownerAddress, ruleId, action = "trade_execute", simulate = true, details } = body || {}
-    if (!ownerAddress) {
-      return NextResponse.json({ error: "Missing ownerAddress (connect wallet)" }, { status: 400 })
-    }
+    const { ownerAddress = "0x0", ruleId, action = "trade_execute", simulate = true, details } = body || {}
 
     // Here we would call AgentKit / 0xGasless to execute
     const result = { txHash: simulate ? undefined : `0x${Math.random().toString(16).slice(2)}`, simulated: !!simulate }

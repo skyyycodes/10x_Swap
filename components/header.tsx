@@ -15,12 +15,12 @@ import { useViewport } from "@/hooks/use-viewport";
 
 export function Header() {
   const pathname = usePathname();
-  const { address, isConnected } = useAccount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [rules, setRules] = useState<any[]>([]);
   const { isMobile } = useViewport();
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const modeToggleRef = useRef<HTMLDivElement>(null);
+  const { address } = useAccount();
 
   // Close mobile menu when route changes
   useEffect(() => {
@@ -92,16 +92,12 @@ export function Header() {
   }
 
   const saveRule = async (rule: any) => {
-    if (!isConnected || !address) {
-      toast({ title: "Connect wallet", description: "Please connect your wallet before saving a rule." });
-      return;
-    }
     setRules((prev) => [rule, ...prev])
     try {
       const res = await fetch("/api/rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...rule, ownerAddress: address }),
+        body: JSON.stringify({ ...rule, ownerAddress: address || "0x0000000000000000000000000000000000000000" }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
