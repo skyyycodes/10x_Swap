@@ -205,7 +205,7 @@ export function CryptocurrenciesList() {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -215,7 +215,7 @@ export function CryptocurrenciesList() {
             className="pl-10"
           />
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
           <Select
             value={sortBy}
             onValueChange={(value) => {
@@ -223,7 +223,7 @@ export function CryptocurrenciesList() {
               setSortOrder("asc")
             }}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -240,7 +240,7 @@ export function CryptocurrenciesList() {
             value={riskFilter}
             onValueChange={setRiskFilter}
           >
-            <SelectTrigger className="w-[150px]">
+            <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Risk Level" />
             </SelectTrigger>
             <SelectContent>
@@ -250,12 +250,14 @@ export function CryptocurrenciesList() {
               <SelectItem value="High">🔴 High Risk</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}>
-            {sortOrder === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
-          </Button>
-          <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh data">
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")} title={`Sort ${sortOrder === "asc" ? "descending" : "ascending"}`}>
+              {sortOrder === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+            </Button>
+            <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh data">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -269,8 +271,9 @@ export function CryptocurrenciesList() {
         <LoadingSkeleton />
       ) : (
         <>
-          <div className="rounded-md border">
-            <Table>
+          <div className="rounded-md border overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[80px]">
@@ -465,6 +468,7 @@ export function CryptocurrenciesList() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </div>
 
           <Pagination className="mt-6">

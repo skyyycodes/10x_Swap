@@ -12,10 +12,19 @@ import { Header } from "@/components/header";
 const fontSans = FontSans({ subsets: ['latin'], variable: '--font-sans' })
 const fontMono = FontMono({ subsets: ['latin'], weight: ['400'], variable: '--font-mono' })
 
+export const metadata = {
+  title: 'PharosDEX - Cryptocurrency Market Explorer',
+  description: 'Explore cryptocurrencies, exchanges, and market data with our responsive crypto platform',
+  viewport: 'width=device-width, initial-scale=1',
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${fontSans.variable} ${fontMono.variable} font-sans relative`}>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+      </head>
+      <body className={`${fontSans.variable} ${fontMono.variable} font-sans relative scroll-smooth`}>
       <ReduxProvider>
           <ExistingProviders>
             <Header />

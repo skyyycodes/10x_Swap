@@ -54,7 +54,7 @@ export function ExchangesList() {
 
   return (
     <div>
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -64,7 +64,7 @@ export function ExchangesList() {
             className="pl-10"
           />
         </div>
-        <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh data">
+        <Button variant="outline" size="icon" onClick={() => refetch()} title="Refresh data" className="self-start sm:self-auto">
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
@@ -77,53 +77,54 @@ export function ExchangesList() {
         <LoadingSkeleton />
       ) : (
         <div className="rounded-md border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[60px]">Rank</TableHead>
-                <TableHead>Exchange</TableHead>
-                <TableHead className="text-center">Trust Score</TableHead>
-                <TableHead className="text-right">24h Volume</TableHead>
-                <TableHead className="text-right hidden md:table-cell">Year Est.</TableHead>
-                <TableHead className="hidden lg:table-cell">Country</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {paginatedExchanges.length > 0 ? (
-                paginatedExchanges.map((exchange: Exchange, index: number) => (
-                  <TableRow key={exchange.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/exchanges/${exchange.id}`}
-                        className="flex items-center hover:text-primary transition-colors"
-                      >
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[60px] text-xs sm:text-sm">Rank</TableHead>
+                  <TableHead className="min-w-[120px] text-xs sm:text-sm">Exchange</TableHead>
+                  <TableHead className="text-center min-w-[90px] text-xs sm:text-sm hidden sm:table-cell">Trust Score</TableHead>
+                  <TableHead className="text-right min-w-[100px] text-xs sm:text-sm">24h Volume</TableHead>
+                  <TableHead className="text-right hidden lg:table-cell text-xs sm:text-sm">Year Est.</TableHead>
+                  <TableHead className="hidden xl:table-cell text-xs sm:text-sm">Country</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedExchanges.length > 0 ? (
+                  paginatedExchanges.map((exchange: Exchange, index: number) => (
+                    <TableRow key={exchange.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium text-xs sm:text-sm">{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
+                      <TableCell className="min-w-[120px]">
+                        <Link
+                          href={`/exchanges/${exchange.id}`}
+                          className="flex items-center hover:text-primary transition-colors"
+                        >
                         {exchange.image ? (
                           <img 
                             src={exchange.image} 
                             alt={exchange.name} 
-                            className="w-8 h-8 rounded-full mr-3" 
+                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full mr-2 sm:mr-3" 
                           />
                         ) : (
-                          <div className="w-8 h-8 bg-primary/10 rounded-full mr-3 flex items-center justify-center text-xs">
+                          <div className="w-6 h-6 sm:w-8 sm:h-8 bg-primary/10 rounded-full mr-2 sm:mr-3 flex items-center justify-center text-xs">
                             {exchange.name.substring(0, 2).toUpperCase()}
                           </div>
                         )}
-                        <div className="font-medium">{exchange.name}</div>
+                        <div className="font-medium text-xs sm:text-sm">{exchange.name}</div>
                       </Link>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400">
+                    <TableCell className="text-center hidden sm:table-cell">
+                      <div className="inline-flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400 text-xs sm:text-sm">
                         {exchange.trust_score || "N/A"}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right font-mono">
+                    <TableCell className="text-right font-mono text-xs sm:text-sm">
                       ${(exchange.trade_volume_24h_btc * 28000 / 1000000000).toFixed(1)}B
                     </TableCell>
-                    <TableCell className="text-right hidden md:table-cell">
+                    <TableCell className="text-right hidden lg:table-cell text-xs sm:text-sm">
                       {exchange.year_established || "N/A"}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
+                    <TableCell className="hidden xl:table-cell text-xs sm:text-sm">
                       {exchange.country || "N/A"}
                     </TableCell>
                   </TableRow>
@@ -141,6 +142,7 @@ export function ExchangesList() {
               )}
             </TableBody>
           </Table>
+          </div>
         </div>
       )}
 
