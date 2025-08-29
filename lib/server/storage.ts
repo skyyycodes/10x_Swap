@@ -58,6 +58,21 @@ export async function getRulesByOwner(owner: string): Promise<StoredRule[]> {
   return list.filter((r) => r.ownerAddress.toLowerCase() === owner.toLowerCase())
 }
 
+export async function updateRule(id: string, changes: Partial<StoredRule>): Promise<StoredRule | null> {
+  const list = await getAllRules()
+  let updated: StoredRule | null = null
+  const next = list.map((r) => {
+    if (r.id === id) {
+      updated = { ...r, ...changes, id: r.id }
+      return updated
+    }
+    return r
+  })
+  if (!updated) return null
+  await fs.writeFile(rulesPath, JSON.stringify(next, null, 2))
+  return updated
+}
+
 export async function getAllLogs(): Promise<LogEntry[]> {
   await ensureDataFiles()
   const buf = await fs.readFile(logsPath, "utf8")

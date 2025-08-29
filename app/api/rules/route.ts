@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { appendLog, generateId, getAllRules, getRulesByOwner, saveRule, type StoredRule } from "@/lib/server/storage"
+import { appendLog, generateId, getAllRules, getRulesByOwner, saveRule, updateRule, type StoredRule } from "@/lib/server/storage"
 
 export async function POST(request: Request) {
   try {
@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     // Map incoming flexible payload to StoredRule shape
     const rule: StoredRule = {
       id: generateId("rule"),
-      ownerAddress: body.ownerAddress || "0x0000000000000000000000000000000000000000",
+      ownerAddress: body.ownerAddress,
       type: (body.type || "rebalance").toLowerCase(),
       targets: Array.isArray(body.targets) ? body.targets : body.coins || [],
       rotateTopN: body.rotateTopN,
@@ -18,6 +18,9 @@ export async function POST(request: Request) {
       cooldownMinutes: Number(body.cooldownMinutes ?? 0),
       status: (body.status || "active").toLowerCase(),
       createdAt: now,
+    }
+    if (!rule.ownerAddress) {
+      return NextResponse.json({ error: "Missing ownerAddress (connect wallet)" }, { status: 400 })
     }
     await saveRule(rule)
     await appendLog({
@@ -38,8 +41,33 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const owner = searchParams.get("owner")
-  const rules = owner ? await getRulesByOwner(owner) : await getAllRules()
+  if (!owner) {
+    return NextResponse.json({ error: "Missing owner query param", rules: [] }, { status: 400 })
+  }
+  const rules = await getRulesByOwner(owner)
   return NextResponse.json({ rules }, { status: 200 })
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const { id, ...changes } = body || {}
+    if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 })
+    const updated = await updateRule(id, changes)
+    if (!updated) return NextResponse.json({ error: "Rule not found" }, { status: 404 })
+    await appendLog({
+      id: generateId("log"),
+      ownerAddress: updated.ownerAddress,
+      ruleId: updated.id,
+      action: "rule_updated",
+      details: changes,
+      status: "success",
+      createdAt: new Date().toISOString(),
+    })
+    return NextResponse.json({ rule: updated }, { status: 200 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Invalid JSON" }, { status: 400 })
+  }
 }
 
 function mapTrigger(body: any) {
