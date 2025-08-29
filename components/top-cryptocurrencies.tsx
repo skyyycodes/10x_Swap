@@ -279,7 +279,7 @@ function CryptoTable({ cryptos }: { cryptos: Cryptocurrency[] }) {
             <TableHead className="text-right hidden md:table-cell text-[#113CFC]/80 dark:text-[#F3C623]/80">Volume (24h)</TableHead>
             <TableHead className="text-center text-[#113CFC]/80 dark:text-[#F3C623]/80">
               <Shield className="inline mr-1 h-3 w-3" />
-              Risk Level
+              Risk
             </TableHead>
           </TableRow>
         </TableHeader>
