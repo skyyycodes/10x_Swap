@@ -8,12 +8,14 @@ import RuleBuilderModal from "@/components/rule-builder-modal";
 import { toast } from "@/hooks/use-toast";
 import { ModeToggle } from "@/components/mode-toggle";
 import { ConnectKitButton } from "connectkit";
+import { useAccount } from "wagmi";
 import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
 import { useViewport } from "@/hooks/use-viewport";
 
 export function Header() {
   const pathname = usePathname();
+  const { address, isConnected } = useAccount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [rules, setRules] = useState<any[]>([]);
   const { isMobile } = useViewport();
@@ -90,12 +92,16 @@ export function Header() {
   }
 
   const saveRule = async (rule: any) => {
+    if (!isConnected || !address) {
+      toast({ title: "Connect wallet", description: "Please connect your wallet before saving a rule." });
+      return;
+    }
     setRules((prev) => [rule, ...prev])
     try {
       const res = await fetch("/api/rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(rule),
+        body: JSON.stringify({ ...rule, ownerAddress: address }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()

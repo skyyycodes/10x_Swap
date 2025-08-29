@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     // Map incoming flexible payload to StoredRule shape
     const rule: StoredRule = {
       id: generateId("rule"),
-      ownerAddress: body.ownerAddress || "0x0000000000000000000000000000000000000000",
+      ownerAddress: body.ownerAddress,
       type: (body.type || "rebalance").toLowerCase(),
       targets: Array.isArray(body.targets) ? body.targets : body.coins || [],
       rotateTopN: body.rotateTopN,
@@ -18,6 +18,9 @@ export async function POST(request: Request) {
       cooldownMinutes: Number(body.cooldownMinutes ?? 0),
       status: (body.status || "active").toLowerCase(),
       createdAt: now,
+    }
+    if (!rule.ownerAddress) {
+      return NextResponse.json({ error: "Missing ownerAddress (connect wallet)" }, { status: 400 })
     }
     await saveRule(rule)
     await appendLog({
@@ -38,7 +41,10 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const owner = searchParams.get("owner")
-  const rules = owner ? await getRulesByOwner(owner) : await getAllRules()
+  if (!owner) {
+    return NextResponse.json({ error: "Missing owner query param", rules: [] }, { status: 400 })
+  }
+  const rules = await getRulesByOwner(owner)
   return NextResponse.json({ rules }, { status: 200 })
 }
 

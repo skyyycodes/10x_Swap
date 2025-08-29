@@ -50,7 +50,7 @@ export default function AgentDashboardPage() {
   const [preview, setPreview] = useState<Log | null>(null)
   const [seenLogIds, setSeenLogIds] = useState<Set<string>>(new Set())
 
-  const owner = address || "0x0000000000000000000000000000000000000000"
+  const owner = address
 
   async function fetchData() {
     setLoading(true)
@@ -89,6 +89,7 @@ export default function AgentDashboardPage() {
   }
 
   useEffect(() => {
+    if (!owner) return
     fetchData()
     // poll logs every 10s for updates
     const t = setInterval(fetchData, 10000)
@@ -140,6 +141,17 @@ export default function AgentDashboardPage() {
           <Button onClick={forceRun}>Force run</Button>
         </div>
       </div>
+
+      {!owner && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Connect Wallet</CardTitle>
+          </CardHeader>
+          <CardContent>
+            Please connect your wallet to view your rules and activity.
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
