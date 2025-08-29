@@ -50,9 +50,7 @@ export default function AgentDashboardPage() {
   const [preview, setPreview] = useState<Log | null>(null)
   const [seenLogIds, setSeenLogIds] = useState<Set<string>>(new Set())
 
-  const owner = address
-
-  async function fetchData() {
+  async function fetchData(owner: string) {
     setLoading(true)
     try {
       const [rRes, lRes] = await Promise.all([
@@ -89,19 +87,24 @@ export default function AgentDashboardPage() {
   }
 
   useEffect(() => {
-    if (!owner) return
-    fetchData()
+    // When disconnected, clear state and do not fetch
+    if (!address) {
+      setRules([])
+      setLogs([])
+      setSeenLogIds(new Set())
+      return
+    }
+    fetchData(address)
     // poll logs every 10s for updates
-    const t = setInterval(fetchData, 10000)
+    const t = setInterval(() => fetchData(address), 10000)
     return () => clearInterval(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [owner])
+  }, [address])
 
   async function pauseResume(rule: Rule, to: "active" | "paused") {
     const res = await fetch("/api/rules", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: rule.id, status: to }) })
     if (res.ok) {
       toast({ title: `Rule ${to === "active" ? "resumed" : "paused"}` })
-      fetchData()
+  if (address) fetchData(address)
     }
   }
 
@@ -111,7 +114,7 @@ export default function AgentDashboardPage() {
       const data = await res.json()
       const count = (data.triggered || []).length
       toast({ title: `Poller ran`, description: `${count} rule(s) triggered.` })
-      fetchData()
+  if (address) fetchData(address)
     }
   }
 
@@ -137,22 +140,23 @@ export default function AgentDashboardPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Agent Dashboard</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchData} disabled={loading}>Refresh</Button>
-          <Button onClick={forceRun}>Force run</Button>
+          <Button variant="outline" onClick={() => address && fetchData(address)} disabled={loading || !address}>Refresh</Button>
+          <Button onClick={forceRun} disabled={!address}>Force run</Button>
         </div>
       </div>
 
-      {!owner && (
+      {!address && (
         <Card>
           <CardHeader>
-            <CardTitle>Connect Wallet</CardTitle>
+            <CardTitle>Your rules</CardTitle>
           </CardHeader>
           <CardContent>
-            Please connect your wallet to view your rules and activity.
+            <p className="text-sm text-muted-foreground">Connect your wallet to view and manage your agent rules.</p>
           </CardContent>
         </Card>
       )}
 
+      {address && (
       <Card>
         <CardHeader>
           <CardTitle>Active Rules</CardTitle>
@@ -201,8 +205,10 @@ export default function AgentDashboardPage() {
           </Table>
         </CardContent>
       </Card>
+  )}
 
-      <Card>
+  {address && (
+  <Card>
         <CardHeader>
           <CardTitle>Activity</CardTitle>
         </CardHeader>
@@ -235,6 +241,7 @@ export default function AgentDashboardPage() {
           </div>
         </CardContent>
       </Card>
+  )}
     </div>
   )
 }

@@ -13,6 +13,7 @@ export const wagmiConfig = createConfig(
       [optimism.id]: http(),
       [arbitrum.id]: http(),
     },
+    autoConnect: false,
     // walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
   })
 );

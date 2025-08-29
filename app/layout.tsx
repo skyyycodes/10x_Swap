@@ -16,16 +16,19 @@ const fontMono = FontMono({ subsets: ['latin'], weight: ['400'], variable: '--fo
 export const metadata = {
   title: 'PharosDEX - Cryptocurrency Market Explorer',
   description: 'Explore cryptocurrencies, exchanges, and market data with our responsive crypto platform',
-  viewport: 'width=device-width, initial-scale=1',
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-      </head>
-      <body className={`${fontSans.variable} ${fontMono.variable} font-sans relative scroll-smooth`}>
+  <head></head>
+  <body suppressHydrationWarning className={`${fontSans.variable} ${fontMono.variable} font-sans relative scroll-smooth`}>
       <ReduxProvider>
           <ExistingProviders>
             <Header />
