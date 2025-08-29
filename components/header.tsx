@@ -6,13 +6,9 @@ import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
 import { ConnectKitButton } from "connectkit";
 import { cn } from "@/lib/utils";
-import { useAccount } from "wagmi";
-import { KycVerification } from "@/components/web3/KYC_verification";
 
 export function Header() {
   const pathname = usePathname();
-  const { address: userAddress, isConnected } = useAccount();
-  const kycRegistry = process.env.NEXT_PUBLIC_KYC_REGISTRY_ADDRESS!;
 
   const navItems = [
     { name: "Home", href: "/" },
@@ -46,7 +42,7 @@ export function Header() {
           </nav>
         </div>
 
-        {/* Wallet connect, KYC, and mode toggle */}
+        {/* Wallet connect and mode toggle */}
         <div className="flex items-center gap-2">
           <ConnectKitButton.Custom>
             {({ isConnected, show, truncatedAddress }) => (
@@ -55,13 +51,6 @@ export function Header() {
               </Button>
             )}
           </ConnectKitButton.Custom>
-
-          {isConnected && userAddress && (
-            <KycVerification
-              contractAddress={kycRegistry}
-              userAddress={userAddress}
-            />
-          )}
 
           <ModeToggle />
         </div>

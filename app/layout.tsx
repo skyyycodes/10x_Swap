@@ -6,7 +6,6 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { Providers as ExistingProviders } from '@/components/providers'
-import { Web3Providers } from '@/components/web3/Web3Providers'
 import { ReduxProvider } from '../components/redux-provider'
 import { Header } from "@/components/header";
 
@@ -19,16 +18,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${fontSans.variable} ${fontMono.variable} font-sans relative`}>
       <ReduxProvider>
           <ExistingProviders>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="light"
-              enableSystem
-              disableTransitionOnChange
-            >
-              <Web3Providers>
-                {children}
-              </Web3Providers>
-            </ThemeProvider>
+            <Header />
+            {children}
           </ExistingProviders>
         </ReduxProvider>
         <SpeedInsights />
