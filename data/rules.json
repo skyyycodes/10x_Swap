@@ -1,0 +1,66 @@
+[
+  {
+    "id": "rule_1756454137894_d3sxos",
+    "ownerAddress": "0x0000000000000000000000000000000000000000",
+    "type": "rebalance",
+    "targets": [
+      "a91GCGd_u96cF",
+      "zNZHO_Sjf",
+      "-l8Mn2pVlRs-p",
+      "razxDUgYGNAdQ"
+    ],
+    "rotateTopN": 3,
+    "maxSpendUSD": 100,
+    "maxSlippage": 0.5,
+    "trigger": {
+      "type": "trend_pct",
+      "value": 3,
+      "window": "7d"
+    },
+    "cooldownMinutes": 60,
+    "status": "active",
+    "createdAt": "2025-08-29T07:55:37.894Z"
+  },
+  {
+    "id": "rule_1756456956502_lxf4c2",
+    "ownerAddress": "0x0000000000000000000000000000000000000000",
+    "type": "rebalance",
+    "targets": [
+      "razxDUgYGNAdQ",
+      "HIVsRcGKkPFtW",
+      "WcwrkfNI4FUAe",
+      "zNZHO_Sjf"
+    ],
+    "rotateTopN": 3,
+    "maxSpendUSD": 100,
+    "maxSlippage": 0.5,
+    "trigger": {
+      "type": "price_drop_pct",
+      "value": 5
+    },
+    "cooldownMinutes": 60,
+    "status": "active",
+    "createdAt": "2025-08-29T08:42:36.498Z"
+  },
+  {
+    "id": "rule_1756456988187_aaqv2j",
+    "ownerAddress": "0x0000000000000000000000000000000000000000",
+    "type": "rebalance",
+    "targets": [
+      "razxDUgYGNAdQ",
+      "HIVsRcGKkPFtW",
+      "WcwrkfNI4FUAe",
+      "zNZHO_Sjf"
+    ],
+    "rotateTopN": 3,
+    "maxSpendUSD": 100,
+    "maxSlippage": 0.5,
+    "trigger": {
+      "type": "price_drop_pct",
+      "value": 5
+    },
+    "cooldownMinutes": 60,
+    "status": "active",
+    "createdAt": "2025-08-29T08:43:08.187Z"
+  }
+]
