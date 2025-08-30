@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -77,7 +77,7 @@ const schema = z
     triggerType: z.enum(["priceDrop", "trend", "momentum"], {
       required_error: "Select a trigger",
     }),
-    dropPercent: z.number().optional(),
+  dropPercent: z.coerce.number().optional(),
     trendWindow: z.enum(["24h", "7d", "30d"]).optional(),
     trendThreshold: z.number().optional(),
     momentumLookback: z.number().optional(),
@@ -196,6 +196,20 @@ export function RuleBuilderModal(props: RuleBuilderModalProps) {
 
   const values = form.watch()
 
+  // Local text state for drop percent to allow free typing and commit on blur
+  const [dropPercentText, setDropPercentText] = useState<string>("")
+  useEffect(() => {
+    if (values.triggerType === "priceDrop") {
+      setDropPercentText(
+        values.dropPercent !== undefined && values.dropPercent !== null
+          ? String(values.dropPercent)
+          : ""
+      )
+    } else {
+      setDropPercentText("")
+    }
+  }, [values.dropPercent, values.triggerType, modalOpen])
+
   // If no coin options provided, fetch from API (top 50) and map to options
   const { data: apiCoinsData } = useGetCryptosQuery(50, { skip: !!availableCoinsProp })
   const apiCoinOptions: CoinOption[] = useMemo(() => {
@@ -209,7 +223,19 @@ export function RuleBuilderModal(props: RuleBuilderModalProps) {
     return defaultCoinOptions
   }, [availableCoinsProp, apiCoinOptions])
 
+  const commitDropPercent = () => {
+    if (values.triggerType === "priceDrop") {
+      const v = dropPercentText.replace(/,/g, "").trim()
+      const num = v === "" ? undefined : Number(v)
+      // Only update if it differs
+      if ((num ?? undefined) !== (values.dropPercent ?? undefined)) {
+        form.setValue("dropPercent", num as any, { shouldValidate: false, shouldDirty: true })
+      }
+    }
+  }
+
   const handlePreview = () => {
+    commitDropPercent()
     const data = form.getValues()
     const parsed = schema.safeParse(data)
     if (parsed.success) {
@@ -221,6 +247,7 @@ export function RuleBuilderModal(props: RuleBuilderModalProps) {
   }
 
   const handleSave = () => {
+    commitDropPercent()
     const data = form.getValues()
     const parsed = schema.safeParse(data)
     if (parsed.success) {
@@ -279,7 +306,11 @@ export function RuleBuilderModal(props: RuleBuilderModalProps) {
                     </Select>
                   </FormControl>
                   <FormDescription>
-                    DCA buys on schedule; Rebalance keeps allocations; Rotate picks top movers by trend.
+                    <ul className="list-disc ml-4 space-y-1">
+                      <li>DCA: invest fixed amounts on a schedule</li>
+                      <li>Rebalance: maintain target allocations</li>
+                      <li>Rotate Top N: shift into the top N trending coins</li>
+                    </ul>
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -373,11 +404,23 @@ export function RuleBuilderModal(props: RuleBuilderModalProps) {
                       <FormLabel>Drop percent</FormLabel>
                       <FormControl>
                         <Input
-                          type="number"
-                          min={0}
-                          step={0.1}
-                          value={field.value ?? ""}
-                          onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                          inputMode="decimal"
+                          type="text"
+                          value={dropPercentText}
+                          onChange={(e) => {
+                            setDropPercentText(e.target.value)
+                          }}
+                          onBlur={() => {
+                            const v = dropPercentText.replace(/,/g, "").trim()
+                            if (v === "") {
+                              field.onChange(undefined)
+                              return
+                            }
+                            const num = Number(v)
+                            if (!Number.isNaN(num)) {
+                              field.onChange(num)
+                            }
+                          }}
                           placeholder="e.g. 3"
                         />
                       </FormControl>
@@ -608,7 +651,7 @@ function CoinsMultiSelect({
         <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
           <Command>
             <CommandInput placeholder="Search coins..." />
-            <CommandList className="max-h-80 overflow-y-auto overscroll-contain">
+            <CommandList className="max-h-48 overflow-y-auto overscroll-contain">
               <CommandEmpty>No coins found.</CommandEmpty>
               <CommandGroup>
                 {options.map((opt) => {
