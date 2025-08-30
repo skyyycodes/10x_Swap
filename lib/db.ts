@@ -50,6 +50,40 @@ const MIGRATIONS = [`
 
 for (const sql of MIGRATIONS) db.exec(sql)
 
+// Seed from existing JSON files on first run (if tables are empty)
+try {
+  const hasRules = db.prepare('SELECT 1 FROM rules LIMIT 1').get()
+  if (!hasRules) {
+    const rulesJsonPath = path.join(DB_DIR, 'rules.json')
+    if (fs.existsSync(rulesJsonPath)) {
+      const json = fs.readFileSync(rulesJsonPath, 'utf8')
+      const arr = JSON.parse(json || '[]') as any[]
+      const insert = db.prepare(`INSERT OR IGNORE INTO rules (id, ownerAddress, type, targets, rotateTopN, maxSpendUSD, maxSlippage, trigger, cooldownMinutes, status, createdAt)
+        VALUES (@id, @ownerAddress, @type, @targets, @rotateTopN, @maxSpendUSD, @maxSlippage, @trigger, @cooldownMinutes, @status, @createdAt)`)
+      const tx = db.transaction((rows: any[]) => {
+        for (const r of rows) insert.run(toDbRule(r as Rule))
+      })
+      tx(arr)
+    }
+  }
+  const hasLogs = db.prepare('SELECT 1 FROM logs LIMIT 1').get()
+  if (!hasLogs) {
+    const logsJsonPath = path.join(DB_DIR, 'logs.json')
+    if (fs.existsSync(logsJsonPath)) {
+      const json = fs.readFileSync(logsJsonPath, 'utf8')
+      const arr = JSON.parse(json || '[]') as any[]
+      const insert = db.prepare(`INSERT OR IGNORE INTO logs (id, ownerAddress, ruleId, action, details, status, createdAt)
+        VALUES (@id, @ownerAddress, @ruleId, @action, @details, @status, @createdAt)`)
+      const tx = db.transaction((rows: any[]) => {
+        for (const l of rows) insert.run(toDbLog(l as LogEntry))
+      })
+      tx(arr)
+    }
+  }
+} catch {
+  // best-effort seed; ignore errors
+}
+
 // Types reflecting JSON structure
 export type Rule = {
   id: string

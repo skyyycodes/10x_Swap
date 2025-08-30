@@ -1,26 +1,40 @@
 import { NextResponse } from "next/server"
-import { appendLog, generateId, getAllRules, getRulesByOwner, saveRule, updateRule, type StoredRule } from "@/lib/server/storage"
+import { createRule, getRules as dbGetRules, createLog, type Rule } from "@/lib/db"
+
+export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
+    // Basic validation and normalization
+    const ownerAddress = (body.ownerAddress || "0x0000000000000000000000000000000000000000").toString()
+    const type = (body.type || "rebalance").toString()
+    const targets = Array.isArray(body.targets) ? body.targets.map(String) : []
+    const trigger = body.trigger && typeof body.trigger === "object" ? body.trigger : mapTrigger(body)
+    const maxSpendUSD = Number(body.maxSpendUSD ?? 0)
+    const maxSlippage = Number(body.maxSlippage ?? 0)
+    const cooldownMinutes = Number(body.cooldownMinutes ?? 0)
+    if (!ownerAddress || !type) {
+      return NextResponse.json({ error: "ownerAddress and type are required" }, { status: 400 })
+    }
+
     const now = new Date().toISOString()
-    // Map incoming flexible payload to StoredRule shape
-    const rule: StoredRule = {
+    const rule: Rule = {
       id: generateId("rule"),
-      ownerAddress: body.ownerAddress || "0x0000000000000000000000000000000000000000",
-      type: (body.type || "rebalance").toLowerCase(),
-      targets: Array.isArray(body.targets) ? body.targets : body.coins || [],
-      rotateTopN: body.rotateTopN,
-      maxSpendUSD: Number(body.maxSpendUSD ?? body.maxSpendUsd ?? 0),
-      maxSlippage: Number(body.maxSlippage ?? body.maxSlippagePercent ?? 0),
-      trigger: body.trigger || mapTrigger(body),
-      cooldownMinutes: Number(body.cooldownMinutes ?? 0),
-      status: (body.status || "active").toLowerCase(),
+      ownerAddress,
+      type,
+      targets,
+      rotateTopN: body.rotateTopN != null ? Number(body.rotateTopN) : undefined,
+      maxSpendUSD,
+      maxSlippage,
+      trigger,
+      cooldownMinutes,
+      status: (body.status || "active").toString(),
       createdAt: now,
     }
-    await saveRule(rule)
-    await appendLog({
+
+    createRule(rule)
+    createLog({
       id: generateId("log"),
       ownerAddress: rule.ownerAddress,
       ruleId: rule.id,
@@ -29,6 +43,7 @@ export async function POST(request: Request) {
       status: "success",
       createdAt: now,
     })
+
     return NextResponse.json({ id: rule.id, rule }, { status: 201 })
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Invalid JSON" }, { status: 400 })
@@ -37,47 +52,29 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const owner = searchParams.get("owner")
-  let rules
-  if (owner) {
-    const zero = "0x0000000000000000000000000000000000000000"
-    const [mine, unassigned] = await Promise.all([
-      getRulesByOwner(owner),
-      getRulesByOwner(zero),
-    ])
-    // Combine, newest first
-    rules = [...mine, ...unassigned].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  } else {
-    rules = await getAllRules()
+  const owner = searchParams.get("owner") || undefined
+  if (!owner) {
+    const rules = dbGetRules()
+    return NextResponse.json({ rules }, { status: 200 })
   }
+  const zero = "0x0000000000000000000000000000000000000000"
+  const mine = dbGetRules(owner)
+  const unassigned = dbGetRules(zero)
+  // newest first
+  const rules = [...mine, ...unassigned].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   return NextResponse.json({ rules }, { status: 200 })
 }
 
-export async function PATCH(request: Request) {
-  try {
-    const body = await request.json()
-    const { id, ...changes } = body || {}
-    if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 })
-    const updated = await updateRule(id, changes)
-    if (!updated) return NextResponse.json({ error: "Rule not found" }, { status: 404 })
-    await appendLog({
-      id: generateId("log"),
-      ownerAddress: updated.ownerAddress,
-      ruleId: updated.id,
-      action: "rule_updated",
-      details: changes,
-      status: "success",
-      createdAt: new Date().toISOString(),
-    })
-    return NextResponse.json({ rule: updated }, { status: 200 })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Invalid JSON" }, { status: 400 })
-  }
-}
+// Note: PATCH/update not implemented in DB-backed version yet.
 
 function mapTrigger(body: any) {
   if (body.triggerType === "priceDrop") return { type: "price_drop_pct", value: Number(body.dropPercent || 0) }
   if (body.triggerType === "trend") return { type: "trend_pct", value: Number(body.trendThreshold || 0), window: body.trendWindow || "24h" }
   if (body.triggerType === "momentum") return { type: "momentum", value: Number(body.momentumThreshold || 0), lookbackDays: Number(body.momentumLookback || 0) }
   return { type: "price_drop_pct", value: 0 }
+}
+
+function generateId(prefix: string) {
+  const rnd = Math.random().toString(36).slice(2, 8)
+  return `${prefix}_${Date.now()}_${rnd}`
 }
