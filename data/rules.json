@@ -98,5 +98,27 @@
     "cooldownMinutes": 60,
     "status": "active",
     "createdAt": "2025-08-29T10:16:09.397Z"
+  },
+  {
+    "id": "rule_1756466068465_ifciaa",
+    "ownerAddress": "0x6A79C5CbfB1832cBcA2470a132BEc858f4ff9DF5",
+    "type": "rebalance",
+    "targets": [
+      "razxDUgYGNAdQ",
+      "-l8Mn2pVlRs-p",
+      "WcwrkfNI4FUAe",
+      "aKzUVe4Hh_CON",
+      "VINVMYf0u"
+    ],
+    "rotateTopN": 3,
+    "maxSpendUSD": 100,
+    "maxSlippage": 0.5,
+    "trigger": {
+      "type": "price_drop_pct",
+      "value": 5
+    },
+    "cooldownMinutes": 60,
+    "status": "active",
+    "createdAt": "2025-08-29T11:14:28.465Z"
   }
 ]

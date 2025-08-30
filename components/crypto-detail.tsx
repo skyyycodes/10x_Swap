@@ -31,6 +31,11 @@ import {
   Tooltip as ChartTooltip,
   CartesianGrid,
 } from "recharts"
+import RuleBuilderModal, { type CoinOption } from "@/components/rule-builder-modal"
+import { toast } from "@/hooks/use-toast"
+import { describeRule } from "@/lib/shared/rules"
+import { createRule } from "@/features/agent/api/client"
+import { useAccount } from "wagmi"
 
 // Define time ranges for chart
 const TIME_RANGES = {
@@ -99,6 +104,8 @@ function ChartTooltipContent({ active, payload, label }: TooltipProps) {
 export function CryptoDetail({ id }: { id: string }) {
   const [timeRange, setTimeRange] = useState<"1D" | "7D" | "1M" | "3M" | "1Y" | "ALL">("7D")
   const [inWatchlist, setInWatchlist] = useState(false)
+  const [rbOpen, setRbOpen] = useState(false)
+  const { address } = useAccount()
 
   // Fetch crypto details
   const { 
@@ -251,6 +258,7 @@ export function CryptoDetail({ id }: { id: string }) {
             <Button 
               className="w-full group relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/25 dark:hover:shadow-[#F3C623]/25"
               size="lg"
+              onClick={() => setRbOpen(true)}
             >
               <span className="relative z-10 transition-colors duration-300 group-hover:text-white dark:group-hover:text-black">
                 Add to Auto-Pilot
@@ -263,6 +271,27 @@ export function CryptoDetail({ id }: { id: string }) {
           </CardContent>
         </Card>
       </div>
+      {/* Rule Builder Modal prefilled with this coin */}
+      <RuleBuilderModal
+        open={rbOpen}
+        onOpenChange={setRbOpen}
+        initialCoins={[id]}
+        availableCoins={[{ id, symbol: crypto.symbol, name: crypto.name, iconUrl: (crypto as any).iconUrl || (crypto as any).icon || (crypto as any).image } as CoinOption]}
+        onPreview={(rule) => {
+          toast({ title: "Preview", description: describeRule({ ...rule, coins: rule.coins?.length ? rule.coins : [id], strategy: rule.strategy }) })
+        }}
+        onSave={async (rule) => {
+          try {
+            await createRule({ ...rule, ownerAddress: address || "0x0000000000000000000000000000000000000000" })
+            toast({ title: "Rule saved", description: describeRule(rule) })
+          } catch (e) {
+            console.error(e)
+            toast({ title: "Failed to save rule", description: "Please try again.", variant: "destructive" as any })
+          } finally {
+            setRbOpen(false)
+          }
+        }}
+      />
 
       <Tabs defaultValue="overview" className="mb-8">
         <TabsList className="mb-4">

@@ -1,5 +1,90 @@
 [
   {
+    "id": "log_1756466069322_fdf2ab",
+    "ownerAddress": "0x6A79C5CbfB1832cBcA2470a132BEc858f4ff9DF5",
+    "ruleId": "rule_1756466068465_ifciaa",
+    "action": "rule_created",
+    "details": {
+      "id": "rule_1756466068465_ifciaa",
+      "ownerAddress": "0x6A79C5CbfB1832cBcA2470a132BEc858f4ff9DF5",
+      "type": "rebalance",
+      "targets": [
+        "razxDUgYGNAdQ",
+        "-l8Mn2pVlRs-p",
+        "WcwrkfNI4FUAe",
+        "aKzUVe4Hh_CON",
+        "VINVMYf0u"
+      ],
+      "rotateTopN": 3,
+      "maxSpendUSD": 100,
+      "maxSlippage": 0.5,
+      "trigger": {
+        "type": "price_drop_pct",
+        "value": 5
+      },
+      "cooldownMinutes": 60,
+      "status": "active",
+      "createdAt": "2025-08-29T11:14:28.465Z"
+    },
+    "status": "success",
+    "createdAt": "2025-08-29T11:14:28.465Z"
+  },
+  {
+    "id": "log_1756465851389_51gg3t",
+    "ownerAddress": "0x6A79C5CbfB1832cBcA2470a132BEc858f4ff9DF5",
+    "ruleId": "rule_1756462569397_7jnarn",
+    "action": "rule_updated",
+    "details": {
+      "status": "active"
+    },
+    "status": "success",
+    "createdAt": "2025-08-29T11:10:51.389Z"
+  },
+  {
+    "id": "log_1756465850542_4m6dvk",
+    "ownerAddress": "0x0000000000000000000000000000000000000000",
+    "ruleId": "rule_1756460076544_6uyq0y",
+    "action": "rule_updated",
+    "details": {
+      "status": "active"
+    },
+    "status": "success",
+    "createdAt": "2025-08-29T11:10:50.542Z"
+  },
+  {
+    "id": "log_1756465845752_c9cgpk",
+    "ownerAddress": "0x0000000000000000000000000000000000000000",
+    "ruleId": "rule_1756460076544_6uyq0y",
+    "action": "rule_updated",
+    "details": {
+      "status": "paused"
+    },
+    "status": "success",
+    "createdAt": "2025-08-29T11:10:45.752Z"
+  },
+  {
+    "id": "log_1756465845684_2s0d3q",
+    "ownerAddress": "0x6A79C5CbfB1832cBcA2470a132BEc858f4ff9DF5",
+    "ruleId": "rule_1756462569397_7jnarn",
+    "action": "rule_updated",
+    "details": {
+      "status": "paused"
+    },
+    "status": "success",
+    "createdAt": "2025-08-29T11:10:45.685Z"
+  },
+  {
+    "id": "log_1756465845650_4bejmy",
+    "ownerAddress": "0x6A79C5CbfB1832cBcA2470a132BEc858f4ff9DF5",
+    "ruleId": "rule_1756462569397_7jnarn",
+    "action": "rule_updated",
+    "details": {
+      "status": "paused"
+    },
+    "status": "success",
+    "createdAt": "2025-08-29T11:10:45.650Z"
+  },
+  {
     "id": "log_1756462605789_gwvzo7",
     "ownerAddress": "0x0000000000000000000000000000000000000000",
     "ruleId": "rule_1756460076544_6uyq0y",
