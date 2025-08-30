@@ -39,7 +39,7 @@ export async function GET(request: Request) {
           prevPrice = Number((price / (1 + pct / 100)).toFixed(6))
         }
       }
-      return NextResponse.json({ coinId: coin, price, ...(window ? { window } : {}), ...(prevPrice ? { prevPrice } : {}), source: "rapidapi" })
+  return NextResponse.json({ coinId: coin, price, symbol: details.symbol, name: details.name, ...(window ? { window } : {}), ...(prevPrice ? { prevPrice } : {}), source: "rapidapi" })
     }
   } catch {
     // ignore and fall back to mock

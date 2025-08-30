@@ -18,6 +18,52 @@ export default function AgentDashboardPage() {
   const { address } = useAccount()
   const { toast } = useToast()
   const { rules, logs, loading, refresh, setRuleStatus, lastRunByRule, seenLogIds, setSeenLogIds } = useAgentData(address)
+  // Cache resolved coin symbols for target IDs
+  const [symbolById, setSymbolById] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!rules.length) return
+    const ids = new Set<string>()
+    for (const r of rules) for (const id of r.targets) ids.add(id)
+
+    const missing: string[] = []
+    ids.forEach((id) => {
+      const known = symbolById[id] || resolveTokenByCoinrankingId(id)?.symbol
+      if (!known) missing.push(id)
+    })
+    if (missing.length === 0) return
+
+    let alive = true
+    ;(async () => {
+      const found: Array<[string, string]> = []
+      await Promise.all(
+        missing.map(async (id) => {
+          try {
+            const res = await fetch(`/api/price?coin=${encodeURIComponent(id)}`, { cache: 'no-store' })
+            if (!res.ok) return
+            const data = await res.json()
+            const sym = data?.symbol || data?.data?.symbol
+            if (sym) found.push([id, String(sym)])
+          } catch {}
+        })
+      )
+      if (!alive || found.length === 0) return
+      setSymbolById((prev) => {
+        let changed = false
+        const next = { ...prev }
+        for (const [id, sym] of found) {
+          if (!next[id]) {
+            next[id] = sym
+            changed = true
+          }
+        }
+        return changed ? next : prev
+      })
+    })()
+    return () => {
+      alive = false
+    }
+  }, [rules, symbolById])
 
   useEffect(() => {
     if (!address) return
@@ -73,7 +119,7 @@ export default function AgentDashboardPage() {
   }
 
   function renderTargets(ids: string[]) {
-    const labels = ids.map((id) => resolveTokenByCoinrankingId(id)?.symbol || id)
+  const labels = ids.map((id) => symbolById[id] || resolveTokenByCoinrankingId(id)?.symbol || id)
     const first = labels.slice(0, 3).join(", ")
     return (
       <>
