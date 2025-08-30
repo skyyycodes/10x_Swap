@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing ruleId' }, { status: 400 })
     }
 
-    const rule = getRuleById(ruleId)
+  const rule = await getRuleById(ruleId)
     if (!rule) return NextResponse.json({ error: 'Rule not found' }, { status: 404 })
 
     const baseUrl = getBaseUrl(req)
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
       status: 'success',
       createdAt: now,
     }
-    createLog(log)
+  await createLog(log)
 
     return NextResponse.json({ success: true, logEntry: log }, { status: 200 })
   } catch (e: any) {
