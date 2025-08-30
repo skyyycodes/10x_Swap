@@ -535,8 +535,9 @@ export function RuleBuilderModal(props: RuleBuilderModalProps) {
                     <FormControl>
                       <Input
                         type="number"
+                        inputMode="decimal"
                         min={0}
-                        step={1}
+                        step="any"
                         value={field.value}
                         onChange={(e) => field.onChange(Number(e.target.value))}
                       />

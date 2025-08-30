@@ -73,9 +73,13 @@ export default function AgentDashboardPage() {
 
     for (const log of unseen) {
       if (log.action === "execute_rule") {
-        const tx = log.details?.result?.txHash as string | undefined
-        const title = log.status === "simulated" ? "Simulated trade executed" : "Gasless trade executed"
-        toast({ title, description: tx ? `Tx: ${tx.slice(0, 10)}…${tx.slice(-6)}` : undefined })
+        const tx = (log.details?.txHash as string | undefined) || (log.details?.result?.txHash as string | undefined)
+        if (log.status === "failed") {
+          const err = String(log.details?.error || 'Swap failed')
+          toast({ title: 'Swap failed', description: err, variant: 'destructive' })
+        } else {
+          toast({ title: 'Trade executed', description: tx ? `Tx: ${tx.slice(0, 10)}…${tx.slice(-6)}` : undefined })
+        }
       } else if (log.action === "preview_trade") {
         toast({ title: "Rule triggered (preview)", description: `Rule ${log.ruleId?.slice(-8)}` })
       }

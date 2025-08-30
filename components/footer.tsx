@@ -1,6 +1,5 @@
 import Link from "next/link"
 import { Github, Twitter, Linkedin } from "lucide-react"
-import { DebugButton } from "@/components/debug-button"
 
 export function Footer() {
   return (
@@ -46,7 +45,6 @@ export function Footer() {
               <Linkedin className="h-5 w-5" />
               <span className="sr-only">LinkedIn</span>
             </Link>
-            <DebugButton />
           </div>
         </div>
 
@@ -88,7 +86,6 @@ export function Footer() {
               <Linkedin className="h-5 w-5" />
               <span className="sr-only">LinkedIn</span>
             </Link>
-            <DebugButton />
           </div>
         </div>
       </div>
