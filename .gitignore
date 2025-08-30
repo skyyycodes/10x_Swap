@@ -39,3 +39,32 @@ node_modules
 *.db
 *.db-wal
 *.db-shm
+
+
+NEXT_PUBLIC_CRYPTO_API_URL=https://coinranking1.p.rapidapi.com
+NEXT_PUBLIC_CRYPTO_API_HOST=coinranking1.p.rapidapi.com
+NEXT_PUBLIC_RAPID_API_KEY=71ba89d300msh7c1322da7df8e3ep1860a2jsn328d060f494f
+CRYPTO_RAPID_API_KEY=71ba89d300msh7c1322da7df8e3ep1860a2jsn328d060f494f
+NEXT_PUBLIC_EXCHANGE_API_URL=https://api.coingecko.com/api/v3
+
+# 0xGasless Configuration
+GASLESS_API_KEY=4596f994-4e2e-430d-b878-124d34fb86fb
+GASLESS_PAYMASTER_URL=https://paymaster.0xgasless.com/v1/8453/rpc/4596f994-4e2e-430d-b878-124d34fb86fb
+CHAIN_ID=8453
+CHAIN_NAME=Base
+
+# Required for AgentKit to work
+RPC_URL=base-mainnet.infura.io
+PRIVATE_KEY=23fef3926abafed46218dee913db27123f6954129025355e4d5ee0bd7195824f
+OPENAI_API_KEY=your_openai_api_key_here
+
+#database
+DB_DRIVER=turso
+TURSO_DATABASE_URL=libsql://10x-swap-anik.aws-ap-south-1.turso.io
+TURSO_AUTH_TOKEN=eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NTY1MzcxNjgsImlkIjoiZTIxZmIxNDEtYTM3My00YjU0LWJlYTItYzhmODU2MjBkZTA1IiwicmlkIjoiMjY0NmI4ZWItZDU5OC00ZGIwLTg1ZGYtODEzZTc2NDZmZmNjIn0.bpS-e2dv46t00o-3LaPqANCpwQ9S8dRA2gzqA_9dNGBin25R56nn87cj5gsSSrPysH2ujoZFNxUmL42nxO1nAw
+
+# Cron and migration protection secrets
+# If CRON_SECRET is set, /api/poller/run requires ?token=CRON_SECRET (vercel.json updated)
+CRON_SECRET=cron_5d8f1b8b7f2a4c3e9e2d1c0a7b8d6f4a
+# If MIGRATE_SECRET is set, /api/db/migrate requires ?token=MIGRATE_SECRET
+MIGRATE_SECRET=migrate_f0a7c8d9e1b2a3c4d5e6f7a8b9c0d1e2'

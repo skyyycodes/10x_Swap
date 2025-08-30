@@ -83,10 +83,30 @@ export function Header() {
   ];
 
   const saveRule = async (rule: any) => {
-    setRules((prev) => [rule, ...prev])
+    // Map UI schema -> API schema
+    const type = rule.strategy === 'DCA' ? 'dca' : rule.strategy === 'REBALANCE' ? 'rebalance' : 'rotate'
+    const payload = {
+      ownerAddress: address || "0x0000000000000000000000000000000000000000",
+      type,
+      targets: Array.isArray(rule.coins) ? rule.coins : [],
+      rotateTopN: rule.rotateTopN,
+      maxSpendUSD: rule.maxSpendUsd,
+      maxSlippage: rule.maxSlippagePercent,
+      cooldownMinutes: rule.cooldownMinutes,
+      // Trigger fields are mapped on the server via mapTrigger
+      triggerType: rule.triggerType,
+      dropPercent: rule.dropPercent,
+      trendWindow: rule.trendWindow,
+      trendThreshold: rule.trendThreshold,
+      momentumLookback: rule.momentumLookback,
+      momentumThreshold: rule.momentumThreshold,
+      status: 'active',
+    }
+
+    setRules((prev) => [payload as any, ...prev])
     try {
-  const json = await createRule({ ...rule, ownerAddress: address || "0x0000000000000000000000000000000000000000" })
-  setRules((prev) => [{ ...rule, id: json.id }, ...prev.filter((r) => r !== rule)])
+      const json = await createRule(payload)
+      setRules((prev) => [{ ...(payload as any), id: json.id }, ...prev.filter((r) => (r as any) !== (payload as any))])
     } catch (e) {
       console.error("Failed to save rule:", e)
     }

@@ -282,8 +282,25 @@ export function CryptoDetail({ id }: { id: string }) {
         }}
         onSave={async (rule) => {
           try {
-            await createRule({ ...rule, ownerAddress: address || "0x0000000000000000000000000000000000000000" })
-            toast({ title: "Rule saved", description: describeRule(rule) })
+            const type = rule.strategy === 'DCA' ? 'dca' : rule.strategy === 'REBALANCE' ? 'rebalance' : 'rotate'
+            const payload = {
+              ownerAddress: address || "0x0000000000000000000000000000000000000000",
+              type,
+              targets: Array.isArray(rule.coins) && rule.coins.length ? rule.coins : [id],
+              rotateTopN: rule.rotateTopN,
+              maxSpendUSD: rule.maxSpendUsd,
+              maxSlippage: rule.maxSlippagePercent,
+              cooldownMinutes: rule.cooldownMinutes,
+              triggerType: rule.triggerType,
+              dropPercent: rule.dropPercent,
+              trendWindow: rule.trendWindow,
+              trendThreshold: rule.trendThreshold,
+              momentumLookback: rule.momentumLookback,
+              momentumThreshold: rule.momentumThreshold,
+              status: 'active',
+            }
+            await createRule(payload)
+            toast({ title: "Rule saved", description: describeRule({ ...rule, coins: payload.targets }) })
           } catch (e) {
             console.error(e)
             toast({ title: "Failed to save rule", description: "Please try again.", variant: "destructive" as any })
