@@ -6,8 +6,13 @@ export async function POST(req: Request) {
   try {
     const url = new URL(req.url)
     const token = url.searchParams.get('token') || undefined
-    const required = process.env.CRON_SECRET || process.env.MIGRATE_SECRET || undefined
-    if (required && token !== required) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const cronSecret = process.env.CRON_SECRET
+    const migrateSecret = process.env.MIGRATE_SECRET
+    const protectionEnabled = Boolean(cronSecret || migrateSecret)
+    if (protectionEnabled) {
+      const valid = (token && (token === cronSecret || token === migrateSecret))
+      if (!valid) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const driver = (process.env.DB_DRIVER || '').toLowerCase()
     if (driver !== 'turso' && driver !== 'libsql') {
@@ -19,4 +24,8 @@ export async function POST(req: Request) {
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || 'Migration failed' }, { status: 500 })
   }
+}
+
+export async function GET(req: Request) {
+  return POST(req)
 }
