@@ -4,11 +4,22 @@ import Database from 'better-sqlite3'
 import fs from 'node:fs'
 import path from 'node:path'
 
-// SQLite file under data/
-const DB_DIR = path.join(process.cwd(), 'data')
-const DB_PATH = path.join(DB_DIR, 'db.sqlite')
+// Resolve app data directory (for seeds bundled in the repo)
+const APP_DATA_DIR = path.join(process.cwd(), 'data')
 
-// Ensure data directory exists
+// Choose a writable DB directory
+// - In Vercel/Serverless production, the project FS is read-only; only /tmp is writable (but ephemeral).
+// - Locally, use ./data by default.
+// - Allow overrides via DB_PATH (full file path), DB_DIR + DB_FILE.
+const isServerlessProd = !!process.env.VERCEL || (process.env.NODE_ENV === 'production' && !!process.env.NEXT_RUNTIME)
+const DEFAULT_DB_DIR = isServerlessProd ? (process.env.TMPDIR || '/tmp') : APP_DATA_DIR
+const DB_DIR = process.env.DB_DIR ? path.resolve(process.env.DB_DIR) : DEFAULT_DB_DIR
+const DB_FILE = process.env.DB_FILE || 'db.sqlite'
+const DB_PATH = (process.env.DB_PATH && path.isAbsolute(process.env.DB_PATH))
+  ? (process.env.DB_PATH as string)
+  : path.join(DB_DIR, DB_FILE)
+
+// Ensure DB directory exists
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true })
 
 // Open database (shared cache, WAL mode for better concurrency)
@@ -55,7 +66,7 @@ for (const sql of MIGRATIONS) db.exec(sql)
 try {
   const hasRules = db.prepare('SELECT 1 FROM rules LIMIT 1').get()
   if (!hasRules) {
-    const rulesJsonPath = path.join(DB_DIR, 'rules.json')
+    const rulesJsonPath = path.join(APP_DATA_DIR, 'rules.json')
     if (fs.existsSync(rulesJsonPath)) {
       const json = fs.readFileSync(rulesJsonPath, 'utf8')
       const arr = JSON.parse(json || '[]') as any[]
@@ -69,7 +80,7 @@ try {
   }
   const hasLogs = db.prepare('SELECT 1 FROM logs LIMIT 1').get()
   if (!hasLogs) {
-    const logsJsonPath = path.join(DB_DIR, 'logs.json')
+    const logsJsonPath = path.join(APP_DATA_DIR, 'logs.json')
     if (fs.existsSync(logsJsonPath)) {
       const json = fs.readFileSync(logsJsonPath, 'utf8')
       const arr = JSON.parse(json || '[]') as any[]

@@ -65,3 +65,50 @@ SQLite3 module and Database constructor loaded successfully.
  GET /api/price?coin=zNZHO_Sjf&window=7d 200 in 839ms
  GET /api/price?coin=-l8Mn2pVlRs-p&window=7d 200 in 852ms
  ✓ Compiled in 660ms
+ ⚠ Duplicate page detected. pages/api/agent/execute.ts and app/api/agent/execute/route.ts resolve to /api/agent/execute
+ ✓ Compiled in 1612ms (276 modules)
+ ○ Compiling /api/poller/run ...
+ ✓ Compiled /api/poller/run in 846ms (365 modules)
+ ✓ Compiled /api/price in 36ms (92 modules)
+ GET /api/price?coin=VINVMYf0u 200 in 1067ms
+ GET /api/price?coin=WcwrkfNI4FUAe 200 in 1134ms
+ GET /api/price?coin=razxDUgYGNAdQ 200 in 1167ms
+ GET /api/price?coin=aKzUVe4Hh_CON 200 in 1185ms
+ GET /api/price?coin=-l8Mn2pVlRs-p 200 in 1302ms
+ GET /api/price?coin=WcwrkfNI4FUAe&window=24h 200 in 744ms
+ GET /api/price?coin=-l8Mn2pVlRs-p&window=24h 200 in 798ms
+ GET /api/price?coin=razxDUgYGNAdQ&window=24h 200 in 817ms
+ GET /api/price?coin=aKzUVe4Hh_CON&window=24h 200 in 844ms
+ GET /api/price?coin=VINVMYf0u&window=24h 200 in 845ms
+ GET /api/price?coin=aKzUVe4Hh_CON 200 in 744ms
+ GET /api/price?coin=VINVMYf0u 200 in 745ms
+ GET /api/price?coin=a91GCGd_u96cF 200 in 785ms
+ GET /api/price?coin=VINVMYf0u&window=24h 200 in 879ms
+ GET /api/price?coin=a91GCGd_u96cF&window=24h 200 in 879ms
+ GET /api/price?coin=aKzUVe4Hh_CON&window=24h 200 in 880ms
+ GET /api/price?coin=razxDUgYGNAdQ 200 in 819ms
+ GET /api/price?coin=zNZHO_Sjf 200 in 819ms
+ GET /api/price?coin=HIVsRcGKkPFtW 200 in 820ms
+ GET /api/price?coin=WcwrkfNI4FUAe 200 in 821ms
+ GET /api/price?coin=razxDUgYGNAdQ&window=24h 200 in 813ms
+ GET /api/price?coin=zNZHO_Sjf&window=24h 200 in 813ms
+ GET /api/price?coin=WcwrkfNI4FUAe&window=24h 200 in 814ms
+ GET /api/price?coin=HIVsRcGKkPFtW&window=24h 200 in 820ms
+ GET /api/price?coin=HIVsRcGKkPFtW 200 in 759ms
+ GET /api/price?coin=razxDUgYGNAdQ 200 in 782ms
+ GET /api/price?coin=WcwrkfNI4FUAe 200 in 804ms
+ GET /api/price?coin=zNZHO_Sjf 200 in 810ms
+ GET /api/price?coin=razxDUgYGNAdQ&window=24h 200 in 745ms
+ GET /api/price?coin=WcwrkfNI4FUAe&window=24h 200 in 793ms
+ GET /api/price?coin=zNZHO_Sjf&window=24h 200 in 809ms
+ GET /api/price?coin=HIVsRcGKkPFtW&window=24h 200 in 847ms
+ GET /api/price?coin=a91GCGd_u96cF 200 in 794ms
+ GET /api/price?coin=-l8Mn2pVlRs-p 200 in 796ms
+ GET /api/price?coin=razxDUgYGNAdQ 200 in 822ms
+ GET /api/price?coin=zNZHO_Sjf 200 in 822ms
+ GET /api/price?coin=-l8Mn2pVlRs-p&window=7d 200 in 752ms
+ GET /api/price?coin=zNZHO_Sjf&window=7d 200 in 778ms
+ GET /api/price?coin=razxDUgYGNAdQ&window=7d 200 in 781ms
+ GET /api/price?coin=a91GCGd_u96cF&window=7d 200 in 800ms
+ GET /api/poller/run 200 in 9715ms
+ ✓ Compiled in 1848ms
