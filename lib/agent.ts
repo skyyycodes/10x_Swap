@@ -37,13 +37,55 @@ async function buildAgent() {
 
     const chain = CHAIN_ID === 84532 ? baseSepolia : base
 
+    // Quick sanity checks for common RPC mistakes (e.g., missing Infura/Alchemy project path)
+    const lowerUrl = RPC_URL.toLowerCase()
+    if (lowerUrl.includes('infura.io') && !/\/v3\//i.test(RPC_URL)) {
+      throw new Error(
+        `RPC_URL appears to be an Infura endpoint but is missing '/v3/<PROJECT_ID>'. ` +
+        `Use the full URL, e.g. https://base-mainnet.infura.io/v3/YOUR_PROJECT_ID (Base mainnet) ` +
+        `or https://base-sepolia.infura.io/v3/YOUR_PROJECT_ID (Base Sepolia).`
+      )
+    }
+    if (lowerUrl.includes('alchemy.com') && !/\/v2\//i.test(RPC_URL)) {
+      throw new Error(
+        `RPC_URL appears to be an Alchemy endpoint but is missing '/v2/<API_KEY>'. ` +
+        `Use the full URL, e.g. https://base-mainnet.g.alchemy.com/v2/YOUR_API_KEY (Base mainnet) ` +
+        `or https://base-sepolia.g.alchemy.com/v2/YOUR_API_KEY (Base Sepolia).`
+      )
+    }
+    if (/(^https?:\/\/)?base-mainnet\.infura\.io\/?$/i.test(RPC_URL)) {
+      // Specific helpful nudge for the 404 the user hit
+      throw new Error(
+        `RPC_URL 'https://base-mainnet.infura.io' is incomplete and will 404. ` +
+        `Include your project path: https://base-mainnet.infura.io/v3/YOUR_PROJECT_ID.`
+      )
+    }
+
     const account = privateKeyToAccount(PRIVATE_KEY)
 
     // Vanilla viem clients (helpful for reads/decoding)
     const publicClient = createPublicClient({ chain, transport: http(RPC_URL) })
     const eoaClient = createWalletClient({ account, chain, transport: http(RPC_URL) })
 
-    // Initialize 0xGasless Agentkit using wallet (Agentkit manages smart account internally)
+    // Preflight: verify the RPC is reachable and matches CHAIN_ID
+    try {
+      const rpcChainId = await publicClient.getChainId()
+      if (rpcChainId !== chain.id) {
+        throw new Error(
+          `RPC chainId ${rpcChainId} does not match expected ${chain.id} (${chain.id === 8453 ? 'Base' : 'Base Sepolia'}). ` +
+          `Check CHAIN_ID and RPC_URL.`
+        )
+      }
+    } catch (err: any) {
+      const msg = String(err?.message || err)
+      throw new Error(
+        `RPC_URL check failed: ${msg}. ` +
+        `If using Infura, ensure the URL includes '/v3/PROJECT_ID'. ` +
+        `Examples: https://mainnet.base.org (no key), https://base-mainnet.infura.io/v3/KEY, https://base-mainnet.g.alchemy.com/v2/KEY.`
+      )
+    }
+
+  // Initialize 0xGasless Agentkit using wallet (Agentkit manages smart account internally)
     const agentkit = await Agentkit.configureWithWallet({
       privateKey: PRIVATE_KEY,
       rpcUrl: RPC_URL,

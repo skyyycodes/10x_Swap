@@ -8,6 +8,7 @@ import { Providers as ExistingProviders } from '@/components/providers'
 import { ReduxProvider } from '../components/redux-provider'
 import { Header } from "@/components/header";
 import { Toaster } from "@/components/ui/toaster";
+import ChatBubble from "@/components/chat-bubble";
 
 const fontSans = FontSans({ subsets: ['latin'], variable: '--font-sans' })
 const fontMono = FontMono({ subsets: ['latin'], weight: ['400'], variable: '--font-mono' })
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SpeedInsights />
         <Analytics />
   <Toaster />
+  <ChatBubble />
       </body>
     </html>
   )
