@@ -201,6 +201,9 @@ const updateRuleStmt = db.prepare(`
     status = @status
   WHERE id = @id
 `)
+const deleteRuleStmt = db.prepare(`
+  DELETE FROM rules WHERE id = @id AND ownerAddress = @ownerAddress
+`)
 
 export const sqliteDriver = {
   async createRule(rule: Rule): Promise<Rule> { insertRuleStmt.run(toDbRule(rule)); return rule },
@@ -214,6 +217,10 @@ export const sqliteDriver = {
     const merged: Rule = { ...existing, ...changes, targets: (changes.targets ?? existing.targets) as string[], trigger: changes.trigger ?? existing.trigger, createdAt: existing.createdAt, id: existing.id }
     updateRuleStmt.run(toDbRule(merged));
     return merged
+  },
+  async deleteRule(id: string, ownerAddress: string): Promise<boolean> {
+    const info = deleteRuleStmt.run({ id, ownerAddress })
+    return info.changes > 0
   },
 }
 

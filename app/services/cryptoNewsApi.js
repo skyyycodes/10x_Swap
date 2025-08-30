@@ -16,7 +16,7 @@ export const cryptoNewsApi = createApi({
   endpoints: (builder) => ({
     getCryptoNews: builder.query({
       // Use the search_crypto_articles endpoint with proper parameters
-      query: ({ newsCategory, count }) => createRequest(`/api/v1/crypto/articles/search?format=json&time_frame=24h&page=1&limit=${count}`),
+  query: ({ count }) => createRequest(`/api/v1/crypto/articles/search?format=json&time_frame=24h&page=1&limit=${count}`),
       transformResponse: (response) => {
         // Transform API response to match expected format in components
         if (response && response.articles) {

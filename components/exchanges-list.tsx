@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -100,10 +101,12 @@ export function ExchangesList() {
                           className="flex items-center hover:text-primary transition-colors"
                         >
                         {exchange.image ? (
-                          <img 
-                            src={exchange.image} 
-                            alt={exchange.name} 
-                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full mr-2 sm:mr-3" 
+                          <Image 
+                            src={exchange.image}
+                            alt={exchange.name}
+                            width={32}
+                            height={32}
+                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full mr-2 sm:mr-3 object-cover"
                           />
                         ) : (
                           <div className="w-6 h-6 sm:w-8 sm:h-8 bg-primary/10 rounded-full mr-2 sm:mr-3 flex items-center justify-center text-xs">
