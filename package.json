@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+  "lint": "next lint",
+  "build:poller": "tsc -p tsconfig.poller.json",
+  "run:poller": "node scripts/run-poller.js"
   },
   "dependencies": {
     "@0xgasless/agentkit": "^0.0.16",
