@@ -29,3 +29,13 @@ yarn-error.log*
 next-env.d.ts
 .vercel
 node_modules
+
+# sqlite databases & write-ahead logs
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.db
+*.db-wal
+*.db-shm

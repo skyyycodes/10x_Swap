@@ -8,7 +8,7 @@
     "start": "next start",
   "lint": "next lint",
   "build:poller": "tsc -p tsconfig.poller.json",
-  "run:poller": "node scripts/run-poller.js",
+  "run:poller": "npm run build:poller && node scripts/run-poller.js",
   "dev:cron": "npm run build:poller && node scripts/dev-cron.js"
   },
   "dependencies": {

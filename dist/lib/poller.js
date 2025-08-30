@@ -38,14 +38,14 @@ function canTrigger(rule, lastExecIso) {
     return minutesAgo(lastExecIso) >= cd;
 }
 async function lastExecutionAt(ruleId) {
-    const logs = (0, db_1.getLogs)();
+    const logs = await (0, db_1.getLogs)();
     const latest = logs
         .filter((l) => l.ruleId === ruleId && (l.action === 'execute_rule'))
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
     return latest?.createdAt;
 }
 async function runPollerOnce() {
-    const all = (0, db_1.getRules)();
+    const all = await (0, db_1.getRules)();
     const active = all.filter((r) => (r.status === 'active'));
     const triggered = [];
     const errors = [];
@@ -98,7 +98,7 @@ async function runPollerOnce() {
             }
             // Log the check
             const now = new Date().toISOString();
-            (0, db_1.createLog)({
+            await (0, db_1.createLog)({
                 id: gen('log'),
                 ownerAddress: rule.ownerAddress,
                 ruleId: rule.id,
@@ -118,7 +118,7 @@ async function runPollerOnce() {
             const res = await fetch(execUrl.toString(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ruleId: rule.id }) });
             if (res.ok) {
                 triggered.push(rule.id);
-                (0, db_1.createLog)({
+                await (0, db_1.createLog)({
                     id: gen('log'),
                     ownerAddress: rule.ownerAddress,
                     ruleId: rule.id,
@@ -131,7 +131,7 @@ async function runPollerOnce() {
             else {
                 const errText = await res.text().catch(() => String(res.status));
                 errors.push({ ruleId: rule.id, error: errText });
-                (0, db_1.createLog)({
+                await (0, db_1.createLog)({
                     id: gen('log'),
                     ownerAddress: rule.ownerAddress,
                     ruleId: rule.id,
@@ -144,7 +144,7 @@ async function runPollerOnce() {
         }
         catch (e) {
             errors.push({ ruleId: rule.id, error: e?.message || 'unknown' });
-            (0, db_1.createLog)({
+            await (0, db_1.createLog)({
                 id: gen('log'),
                 ownerAddress: rule.ownerAddress,
                 ruleId: rule.id,
