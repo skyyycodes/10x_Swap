@@ -6,6 +6,7 @@ exports.getRuleById = getRuleById;
 exports.createLog = createLog;
 exports.getLogs = getLogs;
 exports.updateRule = updateRule;
+exports.deleteRule = deleteRule;
 const sqlite_1 = require("./sqlite");
 // Turso is optional; import lazily
 let turso = null;
@@ -49,3 +50,4 @@ async function getRuleById(id) { await ensureInit(); return pickDriver().getRule
 async function createLog(log) { await ensureInit(); return pickDriver().createLog(log); }
 async function getLogs(ownerAddress) { await ensureInit(); return pickDriver().getLogs(ownerAddress); }
 async function updateRule(id, changes) { await ensureInit(); return pickDriver().updateRule(id, changes); }
+async function deleteRule(id, ownerAddress) { await ensureInit(); return pickDriver().deleteRule(id, ownerAddress); }
