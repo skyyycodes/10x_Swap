@@ -39,3 +39,8 @@ node_modules
 *.db
 *.db-wal
 *.db-shm
+
+
+# allow committing the SQLite WAL file under data/
+!data/db.sqlite-wal
+

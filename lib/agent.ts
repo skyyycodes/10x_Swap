@@ -131,6 +131,32 @@ async function buildAgent() {
       }
     }
 
+    async function checkTransaction(hash: `0x${string}`): Promise<{ status: 'success' | 'pending' | 'failed'; receipt?: any }> {
+      try {
+        const receipt = await publicClient.getTransactionReceipt({ hash })
+        if (!receipt) return { status: 'pending' }
+        const ok = receipt.status === 'success'
+        return { status: ok ? 'success' : 'failed', receipt }
+      } catch (e: any) {
+        // If not yet mined, viem throws. Treat as pending.
+        const msg = String(e?.message || '')
+        if (msg.includes('not found') || msg.includes('Receipt for hash') || msg.includes('Transaction receipt not found')) {
+          return { status: 'pending' }
+        }
+        throw new Error(`checkTransaction failed: ${e?.message || e}`)
+      }
+    }
+
+    async function readContract<T = unknown>(opts: { address: Address; abi: any; functionName: string; args?: any[] }): Promise<T> {
+      try {
+        const { address, abi, functionName, args = [] } = opts
+        const result = await publicClient.readContract({ address, abi, functionName: functionName as any, args: args as any })
+        return result as unknown as T
+      } catch (e: any) {
+        throw new Error(`readContract failed: ${e?.message || e}`)
+      }
+    }
+
     // Naive swap helper using 0xGasless Agentkit swap tool if available in future; placeholder here
     async function smartSwap(opts: { tokenInSymbol: string; tokenOutSymbol: string; amount: string; slippage?: number; wait?: boolean }): Promise<{ hash: string }> {
       const { tokenInSymbol, tokenOutSymbol } = opts
@@ -148,6 +174,8 @@ async function buildAgent() {
       eoaClient,
       getAddress,
       getBalance,
+      checkTransaction,
+      readContract,
       smartTransfer,
       smartSwap,
     }
@@ -162,3 +190,13 @@ export async function getAgent() {
 }
 
 export type Agent = Awaited<ReturnType<typeof buildAgent>>
+
+// Public list of available high-level actions we currently support via this wrapper
+export const AVAILABLE_AGENT_ACTIONS = [
+  'getAddress',
+  'getBalance',
+  'checkTransaction',
+  'readContract',
+  'smartTransfer',
+  // 'smartSwap' // planned once integrated with Agentkit swap tool / DEX router
+] as const

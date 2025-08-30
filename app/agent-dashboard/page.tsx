@@ -19,10 +19,10 @@ export default function AgentDashboardPage() {
   useEffect(() => {
     if (!address) return
     const seen = new Set(seenLogIds)
-    for (const log of logs) {
+  for (const log of logs) {
       if (!seen.has(log.id)) {
         seen.add(log.id)
-        if (log.action === "trade_execute") {
+    if (log.action === "execute_rule") {
           const tx = log.details?.result?.txHash as string | undefined
           const title = log.status === "simulated" ? "Simulated trade executed" : "Gasless trade executed"
           toast({ title, description: tx ? `Tx: ${tx.slice(0, 10)}…${tx.slice(-6)}` : undefined })
