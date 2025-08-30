@@ -107,6 +107,26 @@ export default function AgentDashboardPage() {
     refresh()
   }
 
+  async function executeNow(rule: Rule) {
+    try {
+      const res = await fetch('/api/agent/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ruleId: rule.id }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || `HTTP ${res.status}`)
+      }
+      const hash = json?.logEntry?.details?.txHash
+      toast({ title: 'Swap submitted', description: hash ? `Tx: ${String(hash).slice(0, 10)}…${String(hash).slice(-6)}` : 'Submitted' })
+      refresh()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Execution failed'
+      toast({ title: 'Swap failed', description: msg, variant: 'destructive' })
+    }
+  }
+
   async function onDelete(rule: Rule) {
     if (!address) return
     const ok = await apiDeleteRule(rule.id, address)
@@ -208,6 +228,7 @@ export default function AgentDashboardPage() {
                         ) : (
                           <Button size="sm" variant="outline" onClick={() => pauseResume(r, "active")}>Resume</Button>
                         )}
+                        <Button size="sm" onClick={() => executeNow(r)}>Execute</Button>
                         <Button size="sm" variant="destructive" onClick={() => onDelete(r)}>Delete</Button>
                       </TableCell>
                     </TableRow>
