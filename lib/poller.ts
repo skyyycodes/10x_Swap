@@ -3,7 +3,7 @@ import { getRules, getLogs, createLog, type Rule, type LogEntry } from './db'
 type PriceResponse = { coinId: string; price: number; prevPrice?: number; window?: string; source?: string }
 
 function baseApi(): string {
-  return process.env.PRICE_API || 'http://localhost:3000'
+  return process.env.PRICE_API || 'http://localhost:3000' 
 }
 
 async function fetchPrice(coinId: string, window?: string): Promise<PriceResponse | null> {
