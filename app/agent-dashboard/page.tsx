@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useAccount } from "wagmi"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +12,7 @@ import { formatTrigger, type Rule } from "@/lib/shared/rules"
 import { forceRunPoller, useAgentData } from "@/features/agent/hooks/useAgentData"
 import { deleteRule as apiDeleteRule } from "@/features/agent/api/client"
 import { resolveTokenByCoinrankingId } from "@/lib/tokens"
+import { ChevronDown, ChevronUp } from "lucide-react"
 
 export default function AgentDashboardPage() {
   const { address } = useAccount()
@@ -81,6 +82,11 @@ export default function AgentDashboardPage() {
       </>
     )
   }
+
+  // Activity list: collapsed shows 2 recent; expand to see all
+  const [activityExpanded, setActivityExpanded] = useState(false)
+  const sortedLogs = [...logs].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  const visibleLogs = activityExpanded ? sortedLogs : sortedLogs.slice(0, 2)
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
@@ -173,9 +179,9 @@ export default function AgentDashboardPage() {
             <CardTitle>Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {logs.map(l => (
-                <div key={l.id} className="flex items-start justify-between gap-4 border rounded-md p-3">
+            <div className="space-y-1">
+              {visibleLogs.map(l => (
+                <div key={l.id} className="flex items-start justify-between gap-3 border rounded-md p-2">
                   <div className="space-y-1">
                     <div className="text-sm">
                       <span className="font-medium">{l.action}</span> • <span className="text-xs opacity-70">{new Date(l.createdAt).toLocaleString()}</span>
@@ -206,6 +212,13 @@ export default function AgentDashboardPage() {
                   </Badge>
                 </div>
               ))}
+              {sortedLogs.length > 2 && (
+                <div className="flex justify-center pt-1">
+                  <Button variant="ghost" size="sm" onClick={() => setActivityExpanded(v => !v)} className="gap-1 text-xs">
+                    {activityExpanded ? (<><ChevronUp className="h-4 w-4" /> Show less</>) : (<><ChevronDown className="h-4 w-4" /> Show more</>)}
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
