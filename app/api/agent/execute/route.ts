@@ -36,25 +36,29 @@ function generateId(prefix: string) {
 
 
 export async function POST(req: Request) {
+  let loadedRule: any = null
   try {
-  const body = (await req.json().catch(() => ({}))) as unknown
-  const ruleId = (typeof body === 'object' && body && 'ruleId' in body) ? (body as { ruleId?: string }).ruleId : undefined
+    const body = (await req.json().catch(() => ({}))) as unknown
+    const ruleId = (typeof body === 'object' && body && 'ruleId' in body) ? (body as { ruleId?: string }).ruleId : undefined
     if (!ruleId || typeof ruleId !== 'string') {
-      return NextResponse.json({ error: 'Missing ruleId' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'Missing ruleId' }, { status: 400 })
     }
 
-  const rule = await getRuleById(ruleId)
-    if (!rule) return NextResponse.json({ error: 'Rule not found' }, { status: 404 })
+    const rule = await getRuleById(ruleId)
+    loadedRule = rule
+    if (!rule) return NextResponse.json({ success: false, error: 'Rule not found' }, { status: 404 })
 
     const baseUrl = getBaseUrl(req)
     const targets: string[] = Array.isArray(rule.targets) ? rule.targets : []
+    if (!targets.length) return NextResponse.json({ success: false, error: 'No targets in rule' }, { status: 400 })
     const spendTotal = Number(rule.maxSpendUSD ?? 0)
-    const perLegSpend = targets.length > 0 ? spendTotal / targets.length : 0
+    if (!(spendTotal > 0)) return NextResponse.json({ success: false, error: 'maxSpendUSD must be > 0' }, { status: 400 })
+    const perLegSpend = spendTotal / targets.length
 
     const prices: Record<string, number | null> = {}
     await Promise.all(targets.map(async (coinId) => { prices[coinId] = await fetchPrice(baseUrl, coinId) }))
 
-  const legs = targets.map((coinId) => {
+    const legs = targets.map((coinId) => {
       const token = resolveTokenByCoinrankingId(coinId)
       const price = prices[coinId]
       const qty = price && price > 0 ? perLegSpend / price : 0
@@ -62,26 +66,25 @@ export async function POST(req: Request) {
     })
     const plan = { totalSpendUSD: spendTotal, legs }
 
-    let txHash: string | undefined
-    let txStatus: 'submitted' | 'simulated' = 'simulated'
-  try {
-      const agent = await getAgent()
-      const first = legs[0]
-      if (first && first.spendUSD > 0) {
-        const outSymbol = first.symbol || first.coinId // fall back to coinId string if symbol unknown
-        // Compute ETH sell amount from USD budget using ETH price (Coinranking ETH uuid)
-        const ETH_UUID = 'razxDUgYGNAdQ'
-        const ethPrice = await fetchPrice(baseUrl, ETH_UUID)
-        if (!ethPrice || ethPrice <= 0) throw new Error('ETH price unavailable')
-        const ethAmount = first.spendUSD / ethPrice
-        const amountStr = String(ethAmount)
-        const result = await agent.smartSwap({ tokenInSymbol: 'ETH', tokenOutSymbol: outSymbol, amount: amountStr, slippage: rule.maxSlippage ?? 0.5 })
-  txHash = (typeof result === 'object' && result && 'hash' in result) ? (result as { hash?: string }).hash : undefined
-        txStatus = 'submitted'
-      }
-    } catch {
-      txStatus = 'simulated'
-    }
+    // Validate first leg and token mapping
+    const first = legs[0]
+    if (!first) return NextResponse.json({ success: false, error: 'No execution legs computed' }, { status: 400 })
+    const outSymbol = first.symbol || first.coinId
+    if (!first.symbol) throw new Error(`Unsupported target ${first.coinId}. Map its Coinranking UUID in tokens.ts`)
+    if (!(first.spendUSD > 0)) throw new Error('Per-leg spend must be > 0')
+
+    // Compute ETH sell amount from USD budget using ETH price (Coinranking ETH uuid)
+    const ETH_UUID = 'razxDUgYGNAdQ'
+    const ethPrice = await fetchPrice(baseUrl, ETH_UUID)
+    if (!ethPrice || ethPrice <= 0) throw new Error('ETH price unavailable')
+    const ethAmount = first.spendUSD / ethPrice
+    if (!(ethAmount > 0)) throw new Error('Computed ETH amount is zero')
+    const amountStr = String(ethAmount)
+
+    // Execute swap
+    const agent = await getAgent()
+    const result = await agent.smartSwap({ tokenInSymbol: 'ETH', tokenOutSymbol: outSymbol, amount: amountStr, slippage: rule.maxSlippage ?? 0.5 })
+    const txHash = result.hash
 
     const now = new Date().toISOString()
     const log: LogEntry = {
@@ -89,15 +92,29 @@ export async function POST(req: Request) {
       ownerAddress: rule.ownerAddress,
       ruleId: rule.id,
       action: 'execute_rule',
-      details: { rule, prices, plan, txHash, txStatus },
+      details: { rule, prices, plan, txHash },
       status: 'success',
       createdAt: now,
     }
-  await createLog(log)
+    await createLog(log)
 
     return NextResponse.json({ success: true, logEntry: log }, { status: 200 })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Execution failed'
+    // Best-effort failure log
+    if (loadedRule?.ownerAddress) {
+      const now = new Date().toISOString()
+      const failLog: LogEntry = {
+        id: generateId('log'),
+        ownerAddress: loadedRule.ownerAddress,
+        ruleId: loadedRule.id,
+        action: 'execute_rule',
+        details: { error: msg },
+        status: 'failed',
+        createdAt: now,
+      }
+      try { await createLog(failLog) } catch {}
+    }
     return NextResponse.json({ success: false, error: msg }, { status: 500 })
   }
 }

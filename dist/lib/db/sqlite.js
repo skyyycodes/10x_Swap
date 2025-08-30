@@ -197,6 +197,9 @@ const updateRuleStmt = db.prepare(`
     status = @status
   WHERE id = @id
 `);
+const deleteRuleStmt = db.prepare(`
+  DELETE FROM rules WHERE id = @id AND ownerAddress = @ownerAddress
+`);
 exports.sqliteDriver = {
     async createRule(rule) { insertRuleStmt.run(toDbRule(rule)); return rule; },
     async getRules(ownerAddress) { const rows = selectRulesStmt.all({ ownerAddress: ownerAddress ?? null }); return rows.map(fromDbRule); },
@@ -210,5 +213,9 @@ exports.sqliteDriver = {
         const merged = { ...existing, ...changes, targets: (changes.targets ?? existing.targets), trigger: changes.trigger ?? existing.trigger, createdAt: existing.createdAt, id: existing.id };
         updateRuleStmt.run(toDbRule(merged));
         return merged;
+    },
+    async deleteRule(id, ownerAddress) {
+        const info = deleteRuleStmt.run({ id, ownerAddress });
+        return info.changes > 0;
     },
 };
