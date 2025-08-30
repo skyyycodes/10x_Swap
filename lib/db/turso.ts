@@ -126,4 +126,11 @@ export const tursoDriver = {
     })
     return merged
   },
+  async deleteRule(id: string, ownerAddress: string): Promise<boolean> {
+    const client = await getClient()
+    const res = await client.execute({ sql: `DELETE FROM rules WHERE id = ? AND ownerAddress = ?`, args: [id, ownerAddress] })
+    // libsql returns { rowsAffected } on some impls; fallback to truthy
+    const affected = (res as any)?.rowsAffected ?? (res as any)?.affectedRows ?? 0
+    return affected > 0
+  },
 }

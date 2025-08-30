@@ -2,7 +2,6 @@
 import './globals.css'
 import { Inter as FontSans } from 'next/font/google'
 import { Fira_Code as FontMono } from 'next/font/google'
-import { ThemeProvider } from '@/components/theme-provider'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { Providers as ExistingProviders } from '@/components/providers'

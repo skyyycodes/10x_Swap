@@ -40,3 +40,4 @@ export async function getRuleById(id: string): Promise<Rule | null> { await ensu
 export async function createLog(log: LogEntry): Promise<LogEntry> { await ensureInit(); return pickDriver().createLog(log) }
 export async function getLogs(ownerAddress?: string): Promise<LogEntry[]> { await ensureInit(); return pickDriver().getLogs(ownerAddress) }
 export async function updateRule(id: string, changes: Partial<Rule>): Promise<Rule | null> { await ensureInit(); return pickDriver().updateRule(id, changes) }
+export async function deleteRule(id: string, ownerAddress: string): Promise<boolean> { await ensureInit(); return pickDriver().deleteRule(id, ownerAddress) }

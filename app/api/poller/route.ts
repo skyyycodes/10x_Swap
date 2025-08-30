@@ -38,7 +38,7 @@ export async function POST() {
   const ids = Array.from(new Set(rules.flatMap((r) => ruleTargets(r))))
   const priceMap = await fetchManyCoinDetails(ids)
 
-  const triggered: any[] = []
+  const triggered: unknown[] = []
 
   for (const rule of rules) {
     let anyMatch = false

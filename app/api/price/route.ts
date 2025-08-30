@@ -33,8 +33,8 @@ export async function GET(request: Request) {
       const price = Number(details.price)
       let prevPrice: number | undefined
       // If a window is requested and we have a 24h change, approximate previous price
-      if (window && typeof (details as any).change24hPct === 'number') {
-        const pct = Number((details as any).change24hPct)
+      if (window && typeof details.change24hPct === 'number') {
+        const pct = Number(details.change24hPct)
         if (Number.isFinite(pct)) {
           prevPrice = Number((price / (1 + pct / 100)).toFixed(6))
         }

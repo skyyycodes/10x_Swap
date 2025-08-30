@@ -25,7 +25,8 @@ export async function GET(req: Request) {
 
     const result = await runPollerOnce()
     return NextResponse.json({ ok: true, ...result }, { status: 200 })
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || 'Poller failed' }, { status: 500 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Poller failed'
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 })
   }
 }

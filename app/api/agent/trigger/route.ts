@@ -21,7 +21,8 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json({ ok: true, result }, { status: 200 })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Invalid JSON" }, { status: 400 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Invalid JSON'
+    return NextResponse.json({ error: msg }, { status: 400 })
   }
 }

@@ -21,8 +21,9 @@ export async function POST(req: Request) {
     const { tursoDriver } = await import('@/lib/db/turso')
     await tursoDriver.migrate()
     return NextResponse.json({ ok: true, message: 'Migration completed' })
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || 'Migration failed' }, { status: 500 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Migration failed'
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 })
   }
 }
 

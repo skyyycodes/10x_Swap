@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -56,10 +57,12 @@ export function ExchangeDetail({ id }: { id: string }) {
       <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8">
         <div className="flex items-center gap-4">
           {exchange.image ? (
-            <img 
-              src={exchange.image} 
-              alt={exchange.name} 
-              className="w-12 h-12 rounded-full" 
+            <Image 
+              src={exchange.image}
+              alt={exchange.name}
+              width={48}
+              height={48}
+              className="w-12 h-12 rounded-full object-cover" 
             />
           ) : (
             <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-lg">

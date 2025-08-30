@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/components/ui/use-toast"
 import { formatTrigger, type Rule } from "@/lib/shared/rules"
 import { forceRunPoller, useAgentData } from "@/features/agent/hooks/useAgentData"
+import { deleteRule as apiDeleteRule } from "@/features/agent/api/client"
+import { resolveTokenByCoinrankingId } from "@/lib/tokens"
 
 export default function AgentDashboardPage() {
   const { address } = useAccount()
@@ -18,21 +20,27 @@ export default function AgentDashboardPage() {
 
   useEffect(() => {
     if (!address) return
-    const seen = new Set(seenLogIds)
-  for (const log of logs) {
-      if (!seen.has(log.id)) {
-        seen.add(log.id)
-    if (log.action === "execute_rule") {
-          const tx = log.details?.result?.txHash as string | undefined
-          const title = log.status === "simulated" ? "Simulated trade executed" : "Gasless trade executed"
-          toast({ title, description: tx ? `Tx: ${tx.slice(0, 10)}…${tx.slice(-6)}` : undefined })
-        } else if (log.action === "preview_trade") {
-          toast({ title: "Rule triggered (preview)", description: `Rule ${log.ruleId?.slice(-8)}` })
-        }
+    // Find logs we haven't handled yet
+    const unseen = logs.filter((l) => !seenLogIds.has(l.id))
+    if (unseen.length === 0) return
+
+    for (const log of unseen) {
+      if (log.action === "execute_rule") {
+        const tx = log.details?.result?.txHash as string | undefined
+        const title = log.status === "simulated" ? "Simulated trade executed" : "Gasless trade executed"
+        toast({ title, description: tx ? `Tx: ${tx.slice(0, 10)}…${tx.slice(-6)}` : undefined })
+      } else if (log.action === "preview_trade") {
+        toast({ title: "Rule triggered (preview)", description: `Rule ${log.ruleId?.slice(-8)}` })
       }
     }
-    setSeenLogIds(seen)
-  }, [address, logs])
+
+    // Mark only the newly seen logs; return previous state if no changes to avoid extra renders
+    setSeenLogIds((prev) => {
+      const next = new Set(prev)
+      for (const l of unseen) next.add(l.id)
+      return next
+    })
+  }, [address, logs, seenLogIds, toast, setSeenLogIds])
 
   function nextCheck(rule: Rule) {
     const last = lastRunByRule.get(rule.id)
@@ -50,6 +58,28 @@ export default function AgentDashboardPage() {
     const { triggered } = await forceRunPoller()
     toast({ title: "Poller ran", description: `${(triggered || []).length} triggered` })
     refresh()
+  }
+
+  async function onDelete(rule: Rule) {
+    if (!address) return
+    const ok = await apiDeleteRule(rule.id, address)
+    if (ok) {
+      toast({ title: 'Rule deleted' })
+      refresh()
+    } else {
+      toast({ title: 'Delete failed', variant: 'destructive' })
+    }
+  }
+
+  function renderTargets(ids: string[]) {
+    const labels = ids.map((id) => resolveTokenByCoinrankingId(id)?.symbol || id)
+    const first = labels.slice(0, 3).join(", ")
+    return (
+      <>
+        {first}
+        {labels.length > 3 && ` +${labels.length - 3}`}
+      </>
+    )
   }
 
   return (
@@ -111,10 +141,7 @@ export default function AgentDashboardPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="uppercase">{r.type}</TableCell>
-                      <TableCell>
-                        {r.targets.slice(0, 3).join(", ")}
-                        {r.targets.length > 3 && ` +${r.targets.length - 3}`}
-                      </TableCell>
+                      <TableCell>{renderTargets(r.targets)}</TableCell>
                       <TableCell>{formatTrigger(r.trigger)}</TableCell>
                       <TableCell className="text-sm">
                         ${r.maxSpendUSD} • slip {r.maxSlippage}%
@@ -129,6 +156,7 @@ export default function AgentDashboardPage() {
                         ) : (
                           <Button size="sm" variant="outline" onClick={() => pauseResume(r, "active")}>Resume</Button>
                         )}
+                        <Button size="sm" variant="destructive" onClick={() => onDelete(r)}>Delete</Button>
                       </TableCell>
                     </TableRow>
                   )

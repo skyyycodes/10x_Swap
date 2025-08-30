@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createRule, getRules as dbGetRules, createLog, type Rule, updateRule as dbUpdateRule, getRuleById as dbGetRuleById } from "@/lib/db"
+import { createRule, getRules as dbGetRules, createLog, type Rule, updateRule as dbUpdateRule, getRuleById as dbGetRuleById, deleteRule as dbDeleteRule } from "@/lib/db"
 
 export const runtime = 'nodejs'
 
@@ -45,8 +45,9 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json({ id: rule.id, rule }, { status: 201 })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Invalid JSON" }, { status: 400 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Invalid JSON'
+    return NextResponse.json({ error: msg }, { status: 400 })
   }
 }
 
@@ -96,15 +97,60 @@ export async function PATCH(request: Request) {
     })
 
     return NextResponse.json({ rule: updated }, { status: 200 })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'Invalid JSON' }, { status: 400 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Invalid JSON'
+    return NextResponse.json({ error: msg }, { status: 400 })
   }
 }
 
-function mapTrigger(body: any) {
-  if (body.triggerType === "priceDrop") return { type: "price_drop_pct", value: Number(body.dropPercent || 0) }
-  if (body.triggerType === "trend") return { type: "trend_pct", value: Number(body.trendThreshold || 0), window: body.trendWindow || "24h" }
-  if (body.triggerType === "momentum") return { type: "momentum", value: Number(body.momentumThreshold || 0), lookbackDays: Number(body.momentumLookback || 0) }
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = String(searchParams.get('id') || '')
+    const owner = String(searchParams.get('owner') || '')
+    if (!id || !owner) return NextResponse.json({ error: 'Missing id or owner' }, { status: 400 })
+
+    const existing = await dbGetRuleById(id)
+    if (!existing) return NextResponse.json({ error: 'Rule not found' }, { status: 404 })
+    if (existing.ownerAddress.toLowerCase() !== owner.toLowerCase()) {
+      return NextResponse.json({ error: 'Not owner' }, { status: 403 })
+    }
+
+    const ok = await dbDeleteRule(id, owner)
+    if (!ok) return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
+
+    const now = new Date().toISOString()
+    await createLog({
+      id: generateId('log'),
+      ownerAddress: existing.ownerAddress,
+      ruleId: id,
+      action: 'rule_deleted',
+      details: { before: existing },
+      status: 'success',
+      createdAt: now,
+    })
+
+    return NextResponse.json({ ok: true }, { status: 200 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Invalid request'
+    return NextResponse.json({ error: msg }, { status: 400 })
+  }
+}
+
+type TriggerBody = {
+  triggerType?: 'priceDrop' | 'trend' | 'momentum' | string
+  dropPercent?: number | string
+  trendThreshold?: number | string
+  trendWindow?: string
+  momentumThreshold?: number | string
+  momentumLookback?: number | string
+}
+
+function mapTrigger(body: TriggerBody) {
+  const t = String(body.triggerType || '')
+  if (t === "priceDrop") return { type: "price_drop_pct", value: Number(body.dropPercent ?? 0) }
+  if (t === "trend") return { type: "trend_pct", value: Number(body.trendThreshold ?? 0), window: body.trendWindow || "24h" }
+  if (t === "momentum") return { type: "momentum", value: Number(body.momentumThreshold ?? 0), lookbackDays: Number(body.momentumLookback ?? 0) }
   return { type: "price_drop_pct", value: 0 }
 }
 

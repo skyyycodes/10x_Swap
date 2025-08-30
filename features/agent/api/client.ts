@@ -33,3 +33,10 @@ export async function runPoller(): Promise<{ triggered: any[] }> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
 }
+
+export async function deleteRule(id: string, owner: string): Promise<boolean> {
+  const res = await fetch(`/api/rules?id=${encodeURIComponent(id)}&owner=${encodeURIComponent(owner)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const json = await res.json()
+  return !!json.ok
+}
