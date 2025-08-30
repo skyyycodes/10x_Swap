@@ -1,5 +1,18 @@
 [
   {
+    "id": "log_1756552102640_fq99qg",
+    "ownerAddress": "0x0000000000000000000000000000000000000000",
+    "action": "trade_execute",
+    "details": {
+      "test": true,
+      "result": {
+        "simulated": true
+      }
+    },
+    "status": "simulated",
+    "createdAt": "2025-08-30T11:08:22.640Z"
+  },
+  {
     "id": "log_1756466069322_fdf2ab",
     "ownerAddress": "0x6A79C5CbfB1832cBcA2470a132BEc858f4ff9DF5",
     "ruleId": "rule_1756466068465_ifciaa",

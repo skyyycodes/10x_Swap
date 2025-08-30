@@ -4,6 +4,7 @@ import { base, baseSepolia } from 'viem/chains'
 import type { Address, Chain } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { Agentkit } from '@0xgasless/agentkit'
+import { resolveTokenBySymbol } from './tokens'
 
 // Minimal helper to read required envs and ensure they are present
 function getEnv(name: string, required = true): string | undefined {
@@ -157,12 +158,79 @@ async function buildAgent() {
       }
     }
 
-    // Naive swap helper using 0xGasless Agentkit swap tool if available in future; placeholder here
+    // Swap via 0x Swap API on Base. Supports ETH<->ERC20 and ERC20<->ERC20.
     async function smartSwap(opts: { tokenInSymbol: string; tokenOutSymbol: string; amount: string; slippage?: number; wait?: boolean }): Promise<{ hash: string }> {
-      const { tokenInSymbol, tokenOutSymbol } = opts
+      const { tokenInSymbol, tokenOutSymbol, amount, slippage = 0.5, wait = true } = opts
       try {
-        // Placeholder: You can integrate a DEX router here, or call an Agentkit tool once exposed.
-        throw new Error(`smartSwap not implemented yet for ${tokenInSymbol}->${tokenOutSymbol}`)
+        const chainId = chain.id
+        if (chainId !== 8453 && chainId !== 84532) throw new Error(`Unsupported chain ${chainId} for swap`)
+
+        const tIn = resolveTokenBySymbol(tokenInSymbol)
+        const tOut = resolveTokenBySymbol(tokenOutSymbol)
+        if (!tIn) throw new Error(`Unknown tokenIn ${tokenInSymbol}`)
+        if (!tOut) throw new Error(`Unknown tokenOut ${tokenOutSymbol}`)
+
+        const sa = (agentkit as any)?.smartAccount
+        if (!sa) throw new Error('Smart account not available for swap')
+        const taker = await sa.getAddress()
+
+        // 0x Swap API host per network
+        const host = chainId === 8453 ? 'https://base.api.0x.org' : 'https://base-sepolia.api.0x.org'
+
+        // Build sell token identifiers for 0x
+        const sellToken = tIn.address === 'ETH' ? 'ETH' : (tIn.address as Address)
+        const buyToken = tOut.address === 'ETH' ? 'ETH' : (tOut.address as Address)
+
+        // Amount in base units
+        const sellAmount = parseUnits(amount, tIn.decimals)
+        const slippagePct = Math.max(0.01, Math.min(5, slippage)) / 100 // 0.01% - 5%
+
+        // Fetch quote
+        const url = new URL(host + '/swap/v1/quote')
+        url.searchParams.set('sellToken', sellToken)
+        url.searchParams.set('buyToken', buyToken)
+        url.searchParams.set('sellAmount', sellAmount.toString())
+        url.searchParams.set('taker', taker)
+        url.searchParams.set('slippagePercentage', slippagePct.toString())
+        // Optional affiliate
+        // url.searchParams.set('affiliateAddress', taker)
+
+        const res = await fetch(url.toString(), { headers: { '0x-api-key': process.env.OX_API_KEY || '' } })
+        if (!res.ok) {
+          const errTxt = await res.text().catch(() => '')
+          throw new Error(`0x quote failed: ${res.status} ${errTxt}`)
+        }
+        const quote = await res.json()
+
+        // For ERC20 sells, ensure allowance to allowanceTarget
+        if (tIn.address !== 'ETH') {
+          const allowanceTarget = quote.allowanceTarget as Address
+          const current: bigint = await publicClient.readContract({
+            address: tIn.address as Address,
+            abi: erc20Abi,
+            functionName: 'allowance',
+            args: [taker as Address, allowanceTarget],
+          }) as unknown as bigint
+          if (current < sellAmount) {
+            const txApprove = await sa.writeContract({
+              address: tIn.address as Address,
+              abi: erc20Abi,
+              functionName: 'approve',
+              args: [allowanceTarget, sellAmount],
+            })
+            await publicClient.waitForTransactionReceipt({ hash: txApprove as `0x${string}` })
+          }
+        }
+
+        // Submit swap transaction through the smart account (gasless)
+        // 0x returns { to, data, value } that should be sent by the taker
+        const to = quote.to as Address
+        const data = quote.data as `0x${string}`
+        const value = BigInt(quote.value || 0)
+
+        const txHash = await sa.sendTransaction({ to, data, value })
+        if (wait) await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` })
+        return { hash: txHash as string }
       } catch (e: any) {
         throw new Error(`smartSwap failed: ${e?.message || e}`)
       }
@@ -198,5 +266,5 @@ export const AVAILABLE_AGENT_ACTIONS = [
   'checkTransaction',
   'readContract',
   'smartTransfer',
-  // 'smartSwap' // planned once integrated with Agentkit swap tool / DEX router
+  'smartSwap',
 ] as const

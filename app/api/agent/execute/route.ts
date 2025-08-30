@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getRuleById, createLog, type LogEntry } from "@/lib/db"
 import { getAgent } from "@/lib/agent"
+import { resolveTokenByCoinrankingId } from "@/lib/tokens"
 
 export const runtime = "nodejs"
 
@@ -49,9 +50,10 @@ export async function POST(req: Request) {
     await Promise.all(targets.map(async (coinId) => { prices[coinId] = await fetchPrice(baseUrl, coinId) }))
 
     const legs = targets.map((coinId) => {
+      const token = resolveTokenByCoinrankingId(coinId)
       const price = prices[coinId]
       const qty = price && price > 0 ? perLegSpend / price : 0
-      return { coinId, side: 'buy' as const, price: price ?? 0, qty, spendUSD: perLegSpend }
+      return { coinId, symbol: token?.symbol ?? null, side: 'buy' as const, price: price ?? 0, qty, spendUSD: perLegSpend }
     })
     const plan = { totalSpendUSD: spendTotal, legs }
 
@@ -61,7 +63,7 @@ export async function POST(req: Request) {
       const agent = await getAgent()
       const first = legs[0]
       if (first && first.price > 0 && first.qty > 0) {
-        const outSymbol = first.coinId
+        const outSymbol = first.symbol || first.coinId // fall back to coinId string if symbol unknown
         const amountStr = String(first.qty)
         const result = await agent.smartSwap({ tokenInSymbol: 'ETH', tokenOutSymbol: outSymbol, amount: amountStr, slippage: rule.maxSlippage ?? 0.5 })
         txHash = (result as any)?.hash
