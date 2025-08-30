@@ -37,7 +37,7 @@ function canTrigger(rule: Rule, lastExecIso?: string | null): boolean {
 }
 
 async function lastExecutionAt(ruleId: string): Promise<string | undefined> {
-  const logs = getLogs()
+  const logs = await getLogs()
   const latest = logs
     .filter((l) => l.ruleId === ruleId && (l.action === 'execute_rule'))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
@@ -45,7 +45,7 @@ async function lastExecutionAt(ruleId: string): Promise<string | undefined> {
 }
 
 export async function runPollerOnce(): Promise<{ checked: number; triggered: string[]; errors: { ruleId: string; error: string }[] }> {
-  const all = getRules()
+  const all = await getRules()
   const active = all.filter((r) => (r.status === 'active'))
   const triggered: string[] = []
   const errors: { ruleId: string; error: string }[] = []
@@ -91,7 +91,7 @@ export async function runPollerOnce(): Promise<{ checked: number; triggered: str
 
       // Log the check
       const now = new Date().toISOString()
-      createLog({
+  await createLog({
         id: gen('log'),
         ownerAddress: rule.ownerAddress,
         ruleId: rule.id,
@@ -112,7 +112,7 @@ export async function runPollerOnce(): Promise<{ checked: number; triggered: str
       const res = await fetch(execUrl.toString(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ruleId: rule.id }) })
       if (res.ok) {
         triggered.push(rule.id)
-        createLog({
+        await createLog({
           id: gen('log'),
           ownerAddress: rule.ownerAddress,
           ruleId: rule.id,
@@ -124,7 +124,7 @@ export async function runPollerOnce(): Promise<{ checked: number; triggered: str
       } else {
         const errText = await res.text().catch(() => String(res.status))
         errors.push({ ruleId: rule.id, error: errText })
-        createLog({
+        await createLog({
           id: gen('log'),
           ownerAddress: rule.ownerAddress,
           ruleId: rule.id,
@@ -136,7 +136,7 @@ export async function runPollerOnce(): Promise<{ checked: number; triggered: str
       }
     } catch (e: any) {
       errors.push({ ruleId: rule.id, error: e?.message || 'unknown' })
-      createLog({
+      await createLog({
         id: gen('log'),
         ownerAddress: rule.ownerAddress,
         ruleId: rule.id,

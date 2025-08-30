@@ -33,8 +33,8 @@ export async function POST(request: Request) {
       createdAt: now,
     }
 
-    createRule(rule)
-    createLog({
+  await createRule(rule)
+  await createLog({
       id: generateId("log"),
       ownerAddress: rule.ownerAddress,
       ruleId: rule.id,
@@ -54,12 +54,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const owner = searchParams.get("owner") || undefined
   if (!owner) {
-    const rules = dbGetRules()
+    const rules = await dbGetRules()
     return NextResponse.json({ rules }, { status: 200 })
   }
   const zero = "0x0000000000000000000000000000000000000000"
-  const mine = dbGetRules(owner)
-  const unassigned = dbGetRules(zero)
+  const [mine, unassigned] = await Promise.all([dbGetRules(owner), dbGetRules(zero)])
   // newest first
   const rules = [...mine, ...unassigned].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   return NextResponse.json({ rules }, { status: 200 })
@@ -81,12 +80,12 @@ export async function PATCH(request: Request) {
     if (body.cooldownMinutes != null) allowed.cooldownMinutes = Number(body.cooldownMinutes)
     if (body.trigger && typeof body.trigger === 'object') allowed.trigger = body.trigger
 
-    const before = dbGetRuleById(id)
-    const updated = dbUpdateRule(id, allowed)
+  const before = await dbGetRuleById(id)
+  const updated = await dbUpdateRule(id, allowed)
     if (!updated) return NextResponse.json({ error: "Rule not found" }, { status: 404 })
 
     const now = new Date().toISOString()
-    createLog({
+  await createLog({
       id: generateId('log'),
       ownerAddress: updated.ownerAddress,
       ruleId: id,

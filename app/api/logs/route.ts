@@ -6,6 +6,6 @@ export const runtime = 'nodejs'
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const owner = searchParams.get("owner") || undefined
-  const logs = getLogs(owner)
+  const logs = await getLogs(owner)
   return NextResponse.json({ logs }, { status: 200 })
 }
