@@ -29,7 +29,8 @@ async function buildAgent() {
   const RPC_RAW = getEnv('RPC_URL') as string
   const RPC_URL = (RPC_RAW.startsWith('http://') || RPC_RAW.startsWith('https://')) ? RPC_RAW : `https://${RPC_RAW}`
     // CHAIN_ID can be 8453 (Base) or 84532 (Base Sepolia testnet)
-    const CHAIN_ID = Number(getEnv('CHAIN_ID', false) ?? '8453')
+    const CHAIN_ID = Number(getEnv('CHAIN_ID'
+        , false) ?? '8453')
     const GASLESS_API_KEY = getEnv('GASLESS_API_KEY') as string
     const GASLESS_PAYMASTER_URL = getEnv('GASLESS_PAYMASTER_URL') as string
 

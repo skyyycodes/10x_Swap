@@ -1,4 +1,5 @@
-import 'server-only'
+// Hint for Next.js to keep this server-only; ignore when running as a plain Node script
+try { require('server-only') } catch {}
 import Database from 'better-sqlite3'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -204,6 +205,20 @@ const selectLogsStmt = db.prepare(`
   ORDER BY datetime(createdAt) DESC
 `)
 
+const updateRuleStmt = db.prepare(`
+  UPDATE rules SET
+    ownerAddress = @ownerAddress,
+    type = @type,
+    targets = @targets,
+    rotateTopN = @rotateTopN,
+    maxSpendUSD = @maxSpendUSD,
+    maxSlippage = @maxSlippage,
+    trigger = @trigger,
+    cooldownMinutes = @cooldownMinutes,
+    status = @status
+  WHERE id = @id
+`)
+
 // Public API
 export function createRule(rule: Rule): Rule {
   insertRuleStmt.run(toDbRule(rule))
@@ -228,6 +243,22 @@ export function createLog(log: LogEntry): LogEntry {
 export function getLogs(ownerAddress?: string): LogEntry[] {
   const rows = selectLogsStmt.all({ ownerAddress: ownerAddress ?? null })
   return rows.map(fromDbLog)
+}
+
+export function updateRule(id: string, changes: Partial<Rule>): Rule | null {
+  const existing = getRuleById(id)
+  if (!existing) return null
+  const merged: Rule = {
+    ...existing,
+    ...changes,
+    targets: (changes.targets ?? existing.targets) as string[],
+    trigger: changes.trigger ?? existing.trigger,
+    // keep createdAt from existing
+    createdAt: existing.createdAt,
+    id: existing.id,
+  }
+  updateRuleStmt.run(toDbRule(merged))
+  return merged
 }
 
 // Expose db for debugging (not recommended to use elsewhere)

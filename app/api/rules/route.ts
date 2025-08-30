@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createRule, getRules as dbGetRules, createLog, type Rule } from "@/lib/db"
+import { createRule, getRules as dbGetRules, createLog, type Rule, updateRule as dbUpdateRule, getRuleById as dbGetRuleById } from "@/lib/db"
 
 export const runtime = 'nodejs'
 
@@ -65,7 +65,42 @@ export async function GET(request: Request) {
   return NextResponse.json({ rules }, { status: 200 })
 }
 
-// Note: PATCH/update not implemented in DB-backed version yet.
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const id = String(body.id || "")
+    if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 })
+
+    const allowed: Partial<Rule> = {}
+    if (body.status && (body.status === 'active' || body.status === 'paused')) allowed.status = body.status
+    if (Array.isArray(body.targets)) allowed.targets = body.targets.map(String)
+    if (body.type) allowed.type = String(body.type)
+    if (body.rotateTopN != null) allowed.rotateTopN = Number(body.rotateTopN)
+    if (body.maxSpendUSD != null) allowed.maxSpendUSD = Number(body.maxSpendUSD)
+    if (body.maxSlippage != null) allowed.maxSlippage = Number(body.maxSlippage)
+    if (body.cooldownMinutes != null) allowed.cooldownMinutes = Number(body.cooldownMinutes)
+    if (body.trigger && typeof body.trigger === 'object') allowed.trigger = body.trigger
+
+    const before = dbGetRuleById(id)
+    const updated = dbUpdateRule(id, allowed)
+    if (!updated) return NextResponse.json({ error: "Rule not found" }, { status: 404 })
+
+    const now = new Date().toISOString()
+    createLog({
+      id: generateId('log'),
+      ownerAddress: updated.ownerAddress,
+      ruleId: id,
+      action: 'rule_updated',
+      details: { before, after: updated, changes: allowed },
+      status: 'success',
+      createdAt: now,
+    })
+
+    return NextResponse.json({ rule: updated }, { status: 200 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'Invalid JSON' }, { status: 400 })
+  }
+}
 
 function mapTrigger(body: any) {
   if (body.triggerType === "priceDrop") return { type: "price_drop_pct", value: Number(body.dropPercent || 0) }
