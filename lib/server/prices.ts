@@ -6,6 +6,8 @@ type CoinDetails = {
   id: string
   price: number
   change24hPct: number // e.g. -3.5 for -3.5%
+  symbol?: string
+  name?: string
 }
 
 export async function fetchCoinDetails(coinId: string): Promise<CoinDetails | null> {
@@ -25,7 +27,9 @@ export async function fetchCoinDetails(coinId: string): Promise<CoinDetails | nu
   return {
     id: coin.uuid || coin.id || coinId,
     price: Number(coin.price),
-    change24hPct: Number(coin.change),
+  change24hPct: Number(coin.change),
+  symbol: coin.symbol,
+  name: coin.name,
   }
 }
 
