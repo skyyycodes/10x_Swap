@@ -11,6 +11,7 @@ export default function ChatBubble() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [threadId, setThreadId] = useState<string | undefined>(undefined)
+  const [showRules, setShowRules] = useState(true)
   const endRef = useRef<HTMLDivElement | null>(null)
 
   const scrollToEnd = useCallback(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [])
@@ -48,8 +49,7 @@ export default function ChatBubble() {
   const CHAIN_ID = useMemo(() => Number(process.env.NEXT_PUBLIC_CHAIN_ID || "8453"), [])
   const chainLabel = CHAIN_ID === 84532 ? "Base Sepolia" : "Base"
   const explorerBase = CHAIN_ID === 84532 ? "https://sepolia.basescan.org" : "https://basescan.org"
-  const providerLabel = (process.env.NEXT_PUBLIC_AI_PROVIDER || "").toLowerCase() || "auto"
-  const modelLabel = process.env.NEXT_PUBLIC_AI_MODEL || "gpt-4o-mini"
+  // Removed provider/model badges from header to declutter UI
 
   // Linkify tx hashes and addresses with explorer links
   const renderContent = (text: string) => {
@@ -116,10 +116,10 @@ export default function ChatBubble() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
-            className="fixed bottom-24 right-5 z-50 flex h-[28rem] w-[22rem] flex-col overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b from-slate-900/80 to-slate-950/80 text-slate-100 shadow-2xl backdrop-blur-xl"
+            className="fixed bottom-24 right-5 z-50 flex h-[34rem] w-[26rem] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white/90 text-slate-900 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-gradient-to-b dark:from-slate-900/80 dark:to-slate-950/80 dark:text-slate-100"
           >
             {/* Header */}
-            <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200/60 px-4 py-3 dark:border-white/10">
               <div className="flex items-center gap-2">
                 <div className="grid h-8 w-8 place-items-center rounded-full bg-white/10">
                   <Bot className="h-4 w-4 text-fuchsia-300" />
@@ -127,10 +127,8 @@ export default function ChatBubble() {
                 <div className="text-sm font-semibold">0xGasless AI Agent</div>
               </div>
               <div className="flex items-center gap-2">
-                <span className="hidden rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-medium text-slate-300 sm:inline">{chainLabel}</span>
-                <span className="hidden rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-medium text-slate-300 sm:inline">{providerLabel === 'auto' ? 'Auto' : providerLabel}</span>
-                <span className="hidden rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-medium text-slate-300 sm:inline">{modelLabel}</span>
-                <button onClick={() => setOpen(false)} className="rounded-md p-1.5 text-slate-300 hover:bg-white/5 hover:text-white">
+                <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 sm:inline">{chainLabel}</span>
+                <button onClick={() => setOpen(false)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white">
                 <X className="h-4 w-4" />
                 </button>
               </div>
@@ -138,12 +136,12 @@ export default function ChatBubble() {
 
             {/* Quick actions */}
             {messages.length === 0 && (
-              <div className="flex flex-wrap gap-2 border-b border-white/10 px-3 pb-3 pt-2">
+              <div className="flex flex-wrap gap-2 border-b border-slate-200/60 px-3 pb-3 pt-2 dark:border-white/10">
                 {presets.map((x) => (
                   <button
                     key={x.label}
                     onClick={() => usePreset(x.prompt)}
-                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 hover:border-fuchsia-400/40 hover:text-white"
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 hover:border-fuchsia-400/40 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-white"
                   >
                     {x.label}
                   </button>
@@ -151,11 +149,62 @@ export default function ChatBubble() {
               </div>
             )}
 
+            {/* Chat Guidelines */}
+            {open && (
+              <div className="border-b border-slate-200/60 px-3 py-2 text-xs text-slate-600 dark:border-white/10 dark:text-slate-300">
+                <div className="mb-1 flex items-center justify-between">
+                  <span className="font-semibold text-slate-900 dark:text-slate-200">Keep this in min(guideline generated by cursor)</span>
+                  <button
+                    onClick={() => setShowRules((v) => !v)}
+                    className="rounded-md px-2 py-1 text-[10px] text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5"
+                  >
+                    {showRules ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {showRules && (
+                  <div className="relative rounded-lg border border-fuchsia-300/30 bg-fuchsia-50/80 p-2 dark:border-fuchsia-400/30 dark:bg-fuchsia-950/20">
+                    <div className="absolute left-0 top-0 h-full w-1 rounded-l-lg bg-fuchsia-400/60 dark:bg-fuchsia-500/50" aria-hidden />
+                    <div className="grid max-h-48 gap-2 overflow-y-auto pr-2 pl-2">
+                      <div>
+                      <div className="mb-1 font-medium text-slate-900 dark:text-slate-200">Supported actions</div>
+                      <ul className="list-disc space-y-1 pl-5">
+  <li>address — your smart account address</li>
+  <li>balance — e.g. get my balances | get my USDC balance | balance 0x... (ERC-20)</li>
+  <li>price — e.g. ETH/BTC/SOL or names like “solana”</li>
+  <li>gas price — current gas on the active network</li>
+  <li>swap — e.g. swap 5 USDC to ETH (gasless on Base)</li>
+  <li>transfer — e.g. transfer 0.01 ETH to 0x... (valid 0x address required)</li>
+</ul>
+</div>
+<div>
+  <div className="mb-1 font-medium text-slate-900 dark:text-slate-200">Tips</div>
+  <ul className="list-disc space-y-1 pl-5">
+    <li>Prefer token symbols (ETH, USDC, WETH, DAI).</li>
+    <li>Keep queries short and specific.</li>
+    <li>For unknown tokens, paste the ERC-20 contract address.</li>
+  </ul>
+</div>
+<div>
+  <div className="mb-1 font-medium text-slate-900 dark:text-slate-200">Important</div>
+  <ul className="list-disc space-y-1 pl-5">
+    <li>Transfers require a valid 0x address; symbols are 2–6 letters.</li>
+    <li>Runs on Base (or Base Sepolia when configured).</li>
+    <li>Balances are shown to 4 decimals; small USD values may round to $0.01.</li>
+    <li>Powered by 0xGasless actions (GetAddress, GetBalance, SendTransaction, SmartSwap, GetTokenDetails).</li>
+    <li>Never share secrets or private keys.</li>
+  </ul>
+</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Messages */}
             <div className="flex-1 space-y-2 overflow-y-auto px-3 py-3">
               {messages.length === 0 && (
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-slate-300">
-                  Ask things like: "what's my address?", "check my USDC balance", "swap 5 USDC to ETH".
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
+                  Ask things like: "what's my address?", "check my USDC balance", "price of solana", "gas price", "swap 5 USDC to ETH".
                 </div>
               )}
               {messages.map((m, i) => (
@@ -169,8 +218,8 @@ export default function ChatBubble() {
                     <div
                       className={
                         m.role === "user"
-                          ? "max-w-full rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-600 px-3 py-2 text-sm shadow-md"
-                          : "max-w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-100 shadow"
+                          ? "max-w-full rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-600 px-3 py-2 text-sm text-white shadow-md"
+                          : "max-w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 shadow dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
                       }
                     >
                       <div className="whitespace-pre-wrap break-words">{renderContent(m.content)}</div>
@@ -180,7 +229,7 @@ export default function ChatBubble() {
               ))}
               {typing && (
                 <div className="flex justify-start">
-                  <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-300">
+                  <div className="flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300">
                     <span className="inline-flex h-2 w-2 animate-bounce rounded-full bg-slate-300 [animation-delay:-0.2s]" />
                     <span className="inline-flex h-2 w-2 animate-bounce rounded-full bg-slate-300" />
                     <span className="inline-flex h-2 w-2 animate-bounce rounded-full bg-slate-300 [animation-delay:0.2s]" />
@@ -191,15 +240,15 @@ export default function ChatBubble() {
             </div>
 
             {/* Input */}
-            <div className="border-t border-white/10 p-3">
-              <div className="group flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2.5 py-2 shadow-inner focus-within:border-fuchsia-400/40">
+            <div className="border-t border-slate-200/60 p-3 dark:border-white/10">
+              <div className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-inner focus-within:border-fuchsia-400/40 dark:border-white/10 dark:bg-white/5">
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && !e.shiftKey ? (e.preventDefault(), send()) : undefined}
                   placeholder={loading ? "Working..." : "Type a message"}
                   disabled={loading}
-                  className="flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-400 focus:outline-none"
+                  className="flex-1 bg-transparent text-sm text-slate-900 placeholder:text-slate-500 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-400"
                 />
                 <motion.button
                   onClick={send}

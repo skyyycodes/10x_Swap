@@ -79,7 +79,8 @@ export function Header() {
     { name: "Home", href: "/" },
     { name: "Cryptocurrencies", href: "/cryptocurrencies" },
     { name: "Exchanges", href: "/exchanges" },
-  { name: "Agent", href: "/agent-dashboard" },
+    { name: "Agent", href: "/agent-dashboard" },
+    
   ];
 
   const saveRule = async (rule: any) => {

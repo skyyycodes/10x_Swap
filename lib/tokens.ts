@@ -7,15 +7,17 @@ export type TokenInfo = {
   symbol: string
   address: Address | 'ETH' // Use 'ETH' sentinel for native
   decimals: number
+  coingeckoId?: string
 }
 
 // Common Base mainnet tokens
 export const BASE_SYMBOL_TO_TOKEN: Record<string, TokenInfo> = {
   ETH: { symbol: 'ETH', address: 'ETH', decimals: 18 },
   WETH: { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006', decimals: 18 },
-  USDC: { symbol: 'USDC', address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e', decimals: 6 },
+  USDC: { symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6, coingeckoId: 'usd-coin' },
   // Tether USD (USDT) on Base Sepolia (user-provided)
-  USDT: { symbol: 'USDT', address: '0x2d1aDB45Bb1d7D2556c6558aDb76CFD4F9F4ed16', decimals: 6 },
+  USDT: { symbol: 'USDT', address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', decimals: 6, coingeckoId: 'tether' },
+  DAI: { symbol: 'DAI', address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', decimals: 18, coingeckoId: 'dai' },
   // USDbC (old bridged USDC) left out intentionally
 }
 

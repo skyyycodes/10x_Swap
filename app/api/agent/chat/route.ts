@@ -73,6 +73,7 @@ export async function POST(req: Request) {
           - get the user's smart account address
           - check native and ERC20 balances (user can provide token contract)
           - perform gasless transfers and swaps on supported chains
+          - fetch market data, token prices, gas estimates, and portfolio information
           Always explain actions in simple words. If a request is unsafe or unsupported, say so clearly.`,
         })
       : undefined
@@ -107,11 +108,95 @@ export async function POST(req: Request) {
           const token = resolveTokenBySymbol(symMatch[1])
           if (token && token.address !== 'ETH') {
             const bal = await getBalance(token.address as any)
-            return `${token.symbol} balance: ${bal}`
+            const formattedBal = parseFloat(bal).toFixed(4)
+            return `${token.symbol} balance: ${formattedBal}`
           }
         }
         const ethBal = await getBalance()
         return `Your ETH balance: ${ethBal}`
+      }
+
+      // Market data and prices
+    if (/\b(price|prices?|market|market data|top|tokens?)\b/.test(text)) {
+        const { getTokenPrice, getMarketData } = await getAgent()
+        
+        // Check for specific token (case-insensitive, e.g., "price of eth")
+        const symMatch = (lastUser!.content || '').match(/(?:price(?:\s+of)?\s+)?([a-z0-9]{2,10})/i)
+        if (symMatch && symMatch[1]) {
+          const sym = symMatch[1].toUpperCase()
+          try {
+            const priceData = await getTokenPrice(sym)
+            return `${sym} price: $${priceData.price}`
+          } catch (e) {
+            // fall through to overview if specific fails
+          }
+        }
+        
+        // General market overview (only if user asked about market, not gas)
+        if (/\b(market|top|coins?|cryptocurrencies|tokens?)\b/.test(text)) {
+          try {
+            // Determine requested count, default 5, cap at 20
+            const nMatch = text.match(/top\s+(\d{1,2})/)
+            const n = Math.min(20, Math.max(1, nMatch ? parseInt(nMatch[1], 10) : 5))
+            const marketData = await getMarketData()
+            const top5 = (Array.isArray(marketData) ? marketData : [])
+              .slice(0, n)
+              .map((coin: any) => `${coin.symbol}: $${Number(coin.price || 0).toFixed(4)}`)
+              .join(', ')
+            return `Top ${n} cryptocurrencies: ${top5}`
+          } catch (e) {
+            return `Couldn't fetch market data: ${e instanceof Error ? e.message : 'Unknown error'}`
+          }
+        }
+      }
+
+      // Gas estimates
+      if (/\b(gas|gas price|gas estimate|fees?)\b/.test(text)) {
+        try {
+          const { getGasEstimate } = await getAgent()
+          const gasData = await getGasEstimate()
+          return `Current gas price: ${gasData.gasPrice} Gwei\nBase fee: ${gasData.baseFee} Gwei\nChain: ${gasData.chain} (${gasData.chainId})`
+        } catch (e) {
+          return `Couldn't fetch gas estimate: ${e instanceof Error ? e.message : 'Unknown error'}`
+        }
+      }
+
+      // Portfolio overview
+      if (/\b(portfolio|portfolio overview|total value|net worth)\b/.test(text)) {
+        try {
+          const { getPortfolioOverview } = await getAgent()
+          const portfolio = await getPortfolioOverview()
+          const fmtUSD = (n: number) => {
+            if (!Number.isFinite(n) || n === 0) return '0.00'
+            const abs = Math.abs(n)
+            if (abs > 0 && abs < 0.01) return (n < 0 ? '-' : '') + '0.01'
+            return n.toFixed(2)
+          }
+          const assets = portfolio.assets.map((asset: any) => {
+            const formattedBalance = parseFloat(asset.balance).toFixed(4)
+            return `${asset.symbol}: ${formattedBalance} ($${fmtUSD(asset.valueUSD)})`
+          }).join('\n')
+          return `Portfolio Overview:\nTotal Value: $${fmtUSD(portfolio.totalValueUSD)}\n\nAssets:\n${assets}`
+        } catch (e) {
+          return `Couldn't fetch portfolio: ${e instanceof Error ? e.message : 'Unknown error'}`
+        }
+      }
+
+      // Transaction history
+      if (/\b(transactions?|history|recent|tx)\b/.test(text)) {
+        try {
+          const { getTransactionHistory } = await getAgent()
+          const txs = await getTransactionHistory()
+          if (txs.length === 0) {
+            return "No recent transactions found."
+          }
+          const recent = txs.slice(0, 3).map((tx: any) => 
+            `${tx.status === 'success' ? '✅' : '❌'} ${tx.hash.slice(0, 8)}...${tx.hash.slice(-6)}: ${tx.value} ETH`
+          ).join('\n')
+          return `Recent transactions:\n${recent}${txs.length > 3 ? `\n...and ${txs.length - 3} more` : ''}`
+        } catch (e) {
+          return `Couldn't fetch transaction history: ${e instanceof Error ? e.message : 'Unknown error'}`
+        }
       }
 
       // Transfer: "transfer 0.01 USDC to 0x..." or "transfer 0.01 to 0x..."
@@ -129,6 +214,126 @@ export async function POST(req: Request) {
         } else {
           const { hash } = await smartTransfer({ amount, destination: to, wait: true })
           return `Transfer submitted. Tx hash: ${hash}`
+        }
+      }
+
+      // Enhanced Smart Transfer Patterns
+      // Batch transfer: "batch transfer 0.01 ETH to 0x... and 0.02 USDC to 0x..."
+      const batchTransferRe = /batch\s+transfer\s+(.+?)(?:\s+and\s+(.+))?/
+      const batchMatch = lastUser!.content.match(batchTransferRe)
+      if (batchMatch) {
+        try {
+          const { smartTransferAdvanced } = await getAgent()
+          const transfers = []
+          
+          // Parse multiple transfers
+          const transferTexts = [batchMatch[1], batchMatch[2]].filter(Boolean)
+          for (const text of transferTexts) {
+            const match = text.match(/(\d+(?:\.\d+)?)\s*([A-Za-z]{2,6})?\s*(?:to|=>)\s*(0x[a-fA-F0-9]{40})/)
+            if (match) {
+              const [, amount, symbol, destination] = match
+              const token = symbol ? resolveTokenBySymbol(symbol) : null
+              transfers.push({
+                destination: destination as `0x${string}`,
+                amount,
+                tokenAddress: token?.address === 'ETH' ? undefined : (token?.address as any)
+              })
+            }
+          }
+          
+          if (transfers.length > 0) {
+            const result = await smartTransferAdvanced({ 
+            amount: transfers[0].amount,
+            destination: transfers[0].destination as `0x${string}`,
+            batch: transfers, 
+            wait: true 
+          })
+            return `Batch transfer submitted! ${transfers.length} transfers executed. Hash: ${result.hash}`
+          }
+        } catch (e: any) {
+          return `Batch transfer failed: ${e.message}`
+        }
+      }
+
+      // Scheduled transfer: "schedule transfer 0.01 ETH to 0x... for tomorrow at 2pm"
+      const scheduledTransferRe = /schedule\s+transfer\s+(\d+(?:\.\d+)?)\s*([A-Za-z]{2,6})?\s*(?:to|=>)\s*(0x[a-fA-F0-9]{40})\s+(?:for|at)\s+(.+)/i
+      const scheduledMatch = lastUser!.content.match(scheduledTransferRe)
+      if (scheduledMatch) {
+        try {
+          const [, amount, symbol, destination, timeText] = scheduledMatch
+          const token = symbol ? resolveTokenBySymbol(symbol) : null
+          
+          // Simple time parsing (you can enhance this)
+          let scheduleDate = new Date()
+          if (timeText.toLowerCase().includes('tomorrow')) {
+            scheduleDate.setDate(scheduleDate.getDate() + 1)
+          }
+          if (timeText.includes('2pm') || timeText.includes('14:00')) {
+            scheduleDate.setHours(14, 0, 0, 0)
+          }
+          
+          const { smartTransferAdvanced } = await getAgent()
+          const result = await smartTransferAdvanced({
+            tokenAddress: token?.address === 'ETH' ? undefined : (token?.address as any),
+            amount,
+            destination: destination as `0x${string}`,
+            schedule: scheduleDate,
+            priority: 'normal'
+          })
+          
+          return `Scheduled transfer set for ${scheduleDate.toLocaleString()}. Amount: ${amount} ${symbol || 'ETH'} to ${destination.slice(0, 8)}...`
+        } catch (e: any) {
+          return `Scheduled transfer failed: ${e.message}`
+        }
+      }
+
+      // Priority transfer: "urgent transfer 0.01 ETH to 0x..." or "cheap transfer 0.01 ETH to 0x..."
+      const priorityTransferRe = /(urgent|fast|cheap|economy)\s+transfer\s+(\d+(?:\.\d+)?)\s*([A-Za-z]{2,6})?\s*(?:to|=>)\s*(0x[a-fA-F0-9]{40})/
+      const priorityMatch = lastUser!.content.match(priorityTransferRe)
+      if (priorityMatch) {
+        const [, priority, amount, symbol, destination] = priorityMatch
+        try {
+          const token = symbol ? resolveTokenBySymbol(symbol) : null
+          
+          let routing: 'fastest' | 'cheapest' | 'mostReliable' = 'fastest'
+          if (priority === 'cheap' || priority === 'economy') routing = 'cheapest'
+          else if (priority === 'urgent' || priority === 'fast') routing = 'fastest'
+          
+          const { smartTransferWithRouting } = await getAgent()
+          const result = await smartTransferWithRouting({
+            tokenAddress: token?.address === 'ETH' ? undefined : (token?.address as any),
+            amount,
+            destination: destination as `0x${string}`,
+            routing,
+            wait: true
+          })
+          
+          return `${priority.charAt(0).toUpperCase() + priority.slice(1)} transfer submitted! Hash: ${result.hash}\nRouting: ${routing}`
+        } catch (e: any) {
+          return `${priority.charAt(0).toUpperCase() + priority.slice(1)} transfer failed: ${e.message}`
+        }
+      }
+
+      // Auto-swap transfer: "smart transfer 0.01 ETH to 0x..." (handles insufficient balance)
+      const smartTransferRe = /smart\s+transfer\s+(\d+(?:\.\d+)?)\s*([A-Za-z]{2,6})?\s*(?:to|=>)\s*(0x[a-fA-F0-9]{40})/
+      const smartMatch = lastUser!.content.match(smartTransferRe)
+      if (smartMatch) {
+        try {
+          const [, amount, symbol, destination] = smartMatch
+          const token = symbol ? resolveTokenBySymbol(symbol) : null
+          
+          const { smartTransferAdvanced } = await getAgent()
+          const result = await smartTransferAdvanced({
+            tokenAddress: token?.address === 'ETH' ? undefined : (token?.address as any),
+            amount,
+            destination: destination as `0x${string}`,
+            autoSwap: true, // Enable auto-swap for insufficient balance
+            wait: true
+          })
+          
+          return `Smart transfer executed! Hash: ${result.hash}\nAuto-swap enabled: ${result.details.autoSwap || false}`
+        } catch (e: any) {
+          return `Smart transfer failed: ${e.message}`
         }
       }
 
