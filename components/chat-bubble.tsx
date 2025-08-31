@@ -126,7 +126,7 @@ export default function ChatBubble() {
                 <div className="grid h-8 w-8 place-items-center rounded-full bg-white/10">
                   <Bot className="h-4 w-4 text-blue-400 dark:text-[#F3C623]" />
                 </div>
-                <div className="text-sm font-semibold">0xGasless AI Agent</div>
+                <div className="text-sm font-semibold">10xSwap AI Agent</div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 sm:inline">{chainLabel}</span>
