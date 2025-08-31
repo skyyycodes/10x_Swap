@@ -6,7 +6,12 @@ import { useAccount } from "wagmi"
 
 type Msg = { role: "user" | "assistant"; content: string }
 
-export default function ChatBubble() {
+type ChatBubbleProps = {
+  variant?: "floating" | "footer"
+  align?: "left" | "right"
+}
+
+export default function ChatBubble({ variant = "floating", align = "right" }: ChatBubbleProps) {
   const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState<Msg[]>([])
   const [input, setInput] = useState("")
@@ -25,11 +30,11 @@ export default function ChatBubble() {
     setInput("")
     setMessages((m) => [...m, { role: "user", content: text }])
     setLoading(true)
-  try {
+    try {
       const res = await fetch("/api/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages: [...messages, { role: "user", content: text }], threadId, walletAddress: address }),
+        body: JSON.stringify({ messages: [...messages, { role: "user", content: text }], threadId, walletAddress: address }),
       })
       const json = await res.json()
       if (json?.ok) {
@@ -47,13 +52,10 @@ export default function ChatBubble() {
 
   const typing = loading
 
-  // Public runtime hints for badges and explorer links
   const CHAIN_ID = useMemo(() => Number(process.env.NEXT_PUBLIC_CHAIN_ID || "8453"), [])
   const chainLabel = CHAIN_ID === 84532 ? "Base Sepolia" : "Base"
   const explorerBase = CHAIN_ID === 84532 ? "https://sepolia.basescan.org" : "https://basescan.org"
-  // Removed provider/model badges from header to declutter UI
 
-  // Linkify tx hashes and addresses with explorer links
   const renderContent = (text: string) => {
     const re = /(0x[a-fA-F0-9]{64})|(0x[a-fA-F0-9]{40})/g
     const out: React.ReactNode[] = []
@@ -94,13 +96,24 @@ export default function ChatBubble() {
     if (autoSend) setTimeout(() => send(), 0)
   }
 
+  const isFooter = variant === "footer"
+  const wrapperClass = isFooter ? (align === "left" ? "relative mr-auto" : "relative ml-auto") : undefined
+  const buttonClass = isFooter
+    ? "relative z-40 grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-xl shadow-blue-500/20 focus:outline-none dark:from-[#F3C623] dark:to-[#D9A800] dark:shadow-[#F3C623]/20"
+    : "fixed bottom-8 right-5 z-50 grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-xl shadow-blue-500/20 focus:outline-none dark:from-[#F3C623] dark:to-[#D9A800] dark:shadow-[#F3C623]/20"
+  const panelClass = isFooter
+    ? (align === "left"
+        ? "absolute bottom-[calc(100%+0.5rem)] left-0 z-50 flex h-[34rem] w-[26rem] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 text-slate-900 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-[#171717]/95 dark:text-slate-100"
+        : "absolute bottom-[calc(100%+0.5rem)] right-0 z-50 flex h-[34rem] w-[26rem] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 text-slate-900 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-[#171717]/95 dark:text-slate-100")
+    : "fixed bottom-32 right-5 z-50 flex h-[34rem] w-[26rem] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 text-slate-900 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-[#171717]/95 dark:text-slate-100"
+
   return (
-    <>
-      {/* Floating Button with glow & hover */}
+    <div className={wrapperClass}>
+      {/* Trigger Button */}
       <motion.button
         aria-label="Open AI chat"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-5 right-5 z-50 grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-xl shadow-blue-500/20 focus:outline-none dark:from-[#F3C623] dark:to-[#D9A800] dark:shadow-[#F3C623]/20"
+        className={buttonClass}
         whileHover={{ scale: 1.07 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -118,7 +131,7 @@ export default function ChatBubble() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
-            className="fixed bottom-24 right-5 z-50 flex h-[34rem] w-[26rem] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 text-slate-900 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-[#171717]/95 dark:text-slate-100"
+            className={panelClass}
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-3 border-b border-slate-200/60 px-4 py-3 dark:border-white/10">
@@ -131,7 +144,7 @@ export default function ChatBubble() {
               <div className="flex items-center gap-2">
                 <span className="hidden rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 sm:inline">{chainLabel}</span>
                 <button onClick={() => setOpen(false)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white">
-                <X className="h-4 w-4" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -168,34 +181,34 @@ export default function ChatBubble() {
                     <div className="absolute left-0 top-0 h-full w-1 rounded-l-lg bg-blue-400/60 dark:bg-[#F3C623]/60" aria-hidden />
                     <div className="grid max-h-48 gap-2 overflow-y-auto pr-2 pl-2">
                       <div>
-                      <div className="mb-1 font-medium text-slate-900 dark:text-slate-200">Supported actions</div>
-                      <ul className="list-disc space-y-1 pl-5">
-  <li>address — your smart account address</li>
-  <li>balance — e.g. get my balances | get my USDC balance | balance 0x... (ERC-20)</li>
-  <li>price — e.g. ETH/BTC/SOL or names like “solana”</li>
-  <li>gas price — current gas on the active network</li>
-  <li>swap — e.g. swap 5 USDC to ETH (gasless on Base)</li>
-  <li>transfer — e.g. transfer 0.01 ETH to 0x... (valid 0x address required)</li>
-</ul>
-</div>
-<div>
-  <div className="mb-1 font-medium text-slate-900 dark:text-slate-200">Tips</div>
-  <ul className="list-disc space-y-1 pl-5">
-    <li>Prefer token symbols (ETH, USDC, WETH, DAI).</li>
-    <li>Keep queries short and specific.</li>
-    <li>For unknown tokens, paste the ERC-20 contract address.</li>
-  </ul>
-</div>
-<div>
-  <div className="mb-1 font-medium text-slate-900 dark:text-slate-200">Important</div>
-  <ul className="list-disc space-y-1 pl-5">
-    <li>Transfers require a valid 0x address; symbols are 2–6 letters.</li>
-    <li>Runs on Base (or Base Sepolia when configured).</li>
-    <li>Balances are shown to 4 decimals; small USD values may round to $0.01.</li>
-    <li>Powered by 0xGasless actions (GetAddress, GetBalance, SendTransaction, SmartSwap, GetTokenDetails).</li>
-    <li>Never share secrets or private keys.</li>
-  </ul>
-</div>
+                        <div className="mb-1 font-medium text-slate-900 dark:text-slate-200">Supported actions</div>
+                        <ul className="list-disc space-y-1 pl-5">
+                          <li>address — your smart account address</li>
+                          <li>balance — e.g. get my balances | get my USDC balance | balance 0x... (ERC-20)</li>
+                          <li>price — e.g. ETH/BTC/SOL or names like “solana”</li>
+                          <li>gas price — current gas on the active network</li>
+                          <li>swap — e.g. swap 5 USDC to ETH (gasless on Base)</li>
+                          <li>transfer — e.g. transfer 0.01 ETH to 0x... (valid 0x address required)</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="mb-1 font-medium text-slate-900 dark:text-slate-200">Tips</div>
+                        <ul className="list-disc space-y-1 pl-5">
+                          <li>Prefer token symbols (ETH, USDC, WETH, DAI).</li>
+                          <li>Keep queries short and specific.</li>
+                          <li>For unknown tokens, paste the ERC-20 contract address.</li>
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="mb-1 font-medium text-slate-900 dark:text-slate-200">Important</div>
+                        <ul className="list-disc space-y-1 pl-5">
+                          <li>Transfers require a valid 0x address; symbols are 2–6 letters.</li>
+                          <li>Runs on Base (or Base Sepolia when configured).</li>
+                          <li>Balances are shown to 4 decimals; small USD values may round to $0.01.</li>
+                          <li>Powered by 0xGasless actions (GetAddress, GetBalance, SendTransaction, SmartSwap, GetTokenDetails).</li>
+                          <li>Never share secrets or private keys.</li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -273,6 +286,6 @@ export default function ChatBubble() {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   )
 }
