@@ -83,13 +83,13 @@ export async function POST(req: Request) {
 
     // Execute agent and collect the final response
     // Helper: simple intent fallback for common actions
-    const fallback = async (): Promise<string | null> => {
+  const fallback = async (): Promise<string | null> => {
       const lastUser = [...incoming].reverse().find((m) => m.role === "user")
       const text = (lastUser?.content || "").toLowerCase()
       if (!text) return null
 
       // Helper: decide which address to use based on phrasing
-      const resolveAddressContext = async () => {
+  const resolveAddressContext = async () => {
         const { getAddresses } = await getAgent()
         const { smart, eoa } = await getAddresses()
         const clientEOA = (body.walletAddress && /^0x[a-fA-F0-9]{40}$/.test(body.walletAddress)) ? body.walletAddress : undefined
@@ -112,7 +112,10 @@ export async function POST(req: Request) {
           // Prefer client EOA when unspecified, else server EOA
           return { target: clientEOA || eoa, label: clientEOA ? 'Connected EOA' : 'Server EOA', missing: !clientEOA && false }
         }
-        // Default to smart account
+        // Default: prefer Connected EOA if provided (read-only friendly), else smart account
+        if (clientEOA) {
+          return { target: clientEOA, label: 'Connected EOA', missing: false }
+        }
         return { target: smart, label: 'Smart Account', missing: false }
       }
 
@@ -122,7 +125,7 @@ export async function POST(req: Request) {
         const { smart, eoa } = await getAddresses()
         const clientEOA = (body.walletAddress && /^0x[a-fA-F0-9]{40}$/.test(body.walletAddress)) ? body.walletAddress : undefined
         return [
-          `Smart Account (gasless): ${smart}`,
+          `Agent smart account (shared): ${smart}`,
           `Server EOA (agent key): ${eoa}`,
           clientEOA ? `Connected EOA (your wallet): ${clientEOA}` : undefined,
         ].filter(Boolean).join('\n')

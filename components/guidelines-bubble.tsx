@@ -14,7 +14,7 @@ export default function GuidelinesBubble() {
       <motion.button
         aria-label="Open guidelines"
         onClick={() => setOpen((v) => !v)}
-        className="relative z-40 grid h-9 w-28 place-items-center rounded-full border border-slate-200/70 bg-white/90 text-xs font-medium text-slate-700 shadow-sm backdrop-blur hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-slate-200"
+        className="relative z-40 grid h-9 w-28 place-items-center rounded-full border border-slate-200/50 bg-white/80 text-xs font-medium text-slate-700 shadow-sm backdrop-blur-sm hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-slate-200"
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
       >
@@ -28,63 +28,72 @@ export default function GuidelinesBubble() {
         {open && (
           <motion.div
             key="guidelines-panel"
-            initial={{ opacity: 0, y: 16, scale: 0.98 }}
+            initial={{ opacity: 0, y: 12, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.98 }}
+            exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
-            className="absolute bottom-[calc(100%+0.5rem)] left-1/2 z-50 w-[28rem] -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 p-3 text-slate-900 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-[#171717]/95 dark:text-slate-100"
+            className="absolute bottom-[calc(100%+0.5rem)] left-1/2 z-50 w-[28rem] -translate-x-1/2 overflow-hidden rounded-2xl bg-white/95 p-4 text-slate-900 shadow-lg backdrop-blur-xl dark:bg-[#171717]/95 dark:text-slate-100"
           >
-            <div className="flex items-center justify-between border-b border-slate-200/60 pb-2 dark:border-white/10">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <BookOpen className="h-4 w-4 text-blue-500 dark:text-[#F3C623]" />
                 Quick guidelines
               </div>
-              <button onClick={() => setOpen(false)} className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/5 dark:hover:text-white">
+              <button onClick={() => setOpen(false)} className="p-1.5 text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mt-2 grid max-h-[22rem] gap-3 overflow-y-auto pr-1 text-xs">
+            <div className="space-y-4 text-sm">
+              {/* Supported tokens */}
               <section>
-                <div className="mb-1 font-semibold">Supported tokens (Base)</div>
-                <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <div className="font-semibold mb-1">Supported tokens (Base)</div>
+                <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
                   {SUPPORTED.map((sym) => {
                     const t = BASE_SYMBOL_TO_TOKEN[sym]
                     const addr = t.address === "ETH" ? "native" : t.address
                     return (
-                      <li key={sym} className="flex items-center justify-between gap-2">
+                      <li key={sym} className="flex justify-between">
                         <span className="font-medium">{sym}</span>
-                        <span className="truncate text-[11px] text-slate-600 dark:text-slate-300">{addr}</span>
+                        <span className="truncate">{addr}</span>
                       </li>
                     )
                   })}
                 </ul>
               </section>
 
+              {/* Production issues */}
               <section>
-                <div className="mb-1 font-semibold">Prod vs local (cron/poller)</div>
-                <ul className="list-disc space-y-1 pl-5">
-                  <li>Prod: Vercel cron triggers serverless poller; logs in app/api/logs.</li>
-                  <li>Local: scripts/dev-cron.js + run-poller.js; ensure .env values and DB file exist.</li>
-                  <li>If rules don’t fire, check time windows and that the poller is running.</li>
-                </ul>
+                <div className="font-semibold mb-1">Problem you are going to face in production build not in local</div>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  In production build on Vercel, we can't run cron jobs multiple times in the free version — only once per day.  
+                  So the condition check (cooldown) when creating a rule will only run once in production.  
+                  In local build, cron can run every 1 minute.  
+                  <br />
+                  To check locally:
+                  <code className="block mt-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs">npm run build:poller</code>
+                  <code className="block mt-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs">npm run dev:cron</code>
+                </p>
               </section>
 
+              {/* Smart account */}
               <section>
-                <div className="mb-1 font-semibold">Why Execute may not run</div>
-                <ul className="list-disc space-y-1 pl-5">
-                  <li>Smart account not deployed/initialized yet.</li>
-                  <li>Insufficient value or missing token approvals.</li>
-                  <li>Paymaster/gasless not available on current chain.</li>
-                </ul>
+                <div className="font-semibold mb-1">Why Execute may not run</div>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  The smart account function is shared across all users for now (may change in future).  
+                  You see the same smart account because it is created with the server/agent key, not the connected wallet.  
+                  Ensure the smart account has sufficient value for swaps.  
+                  Another reason: 0xGasless may not support the current chain.
+                </p>
               </section>
 
+              {/* API issues */}
               <section>
-                <div className="mb-1 font-semibold">API rate limits</div>
-                <ul className="list-disc space-y-1 pl-5">
-                  <li>Third-party market APIs can throttle.</li>
-                  <li>If a coin can’t load, show a friendly notice or retry later.</li>
-                </ul>
+                <div className="font-semibold mb-1">API related errors</div>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  If you see any API reader errors, most probably the limit has been surpassed.  
+                  In that situation, contact me and let me know.
+                </p>
               </section>
             </div>
           </motion.div>
