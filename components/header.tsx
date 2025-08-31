@@ -118,8 +118,8 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link href="/" className="font-extrabold text-lg md:text-xl tracking-tight">
-          <span className="text-slate-900 dark:text-white">10x</span>
-          <span className="bg-gradient-to-r from-fuchsia-500 to-indigo-500 bg-clip-text text-transparent">Swap</span>
+          <span className="text-primary dark:text-[#F3C623]">10x</span>
+          <span className="dark:text-white">Swap</span>
         </Link>
 
         {/* Desktop navigation - Centered */}

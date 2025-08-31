@@ -9,11 +9,11 @@ export function Footer() {
         <div className="flex flex-col space-y-4 md:hidden">
           <div className="text-center">
             <div className="font-bold text-lg mb-2">
-              <span className="text-primary dark:text-[#F3C623]">Crypto</span>
-              <span className="dark:text-white">Market</span>
+              <span className="text-primary dark:text-[#F3C623]">10x</span>
+              <span className="dark:text-white">Swap</span>
             </div>
             <p className="text-xs text-muted-foreground dark:text-[#F3C623]/60">
-              © {new Date().getFullYear()} CryptoMarket. All rights reserved.
+              © {new Date().getFullYear()} 10xSwap. All rights reserved.
             </p>
           </div>
           
@@ -37,7 +37,7 @@ export function Footer() {
               <Twitter className="h-5 w-5" />
               <span className="sr-only">Twitter</span>
             </Link>
-            <Link href="https://github.com/ansu555/crypto-market" className="text-muted-foreground hover:text-primary dark:text-[#F3C623]/60 dark:hover:text-[#F3C623] transition-colors">
+            <Link href="https://github.com/ansu555/10x_Swap" className="text-muted-foreground hover:text-primary dark:text-[#F3C623]/60 dark:hover:text-[#F3C623] transition-colors">
               <Github className="h-5 w-5" />
               <span className="sr-only">GitHub</span>
             </Link>
@@ -52,11 +52,11 @@ export function Footer() {
         <div className="hidden md:flex h-10 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="font-bold text-lg">
-              <span className="text-primary dark:text-[#F3C623]">Crypto</span>
-              <span className="dark:text-white">Market</span>
+              <span className="text-primary dark:text-[#F3C623]">10x</span>
+              <span className="dark:text-white">Swap</span>
             </div>
             <p className="text-xs text-muted-foreground dark:text-[#F3C623]/60 ml-4">
-              © {new Date().getFullYear()} CryptoMarket. All rights reserved.
+              © {new Date().getFullYear()} 10xSwap. All rights reserved.
             </p>
           </div>
           <nav className="flex gap-6 text-sm">
