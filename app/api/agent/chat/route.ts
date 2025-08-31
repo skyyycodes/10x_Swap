@@ -47,7 +47,7 @@ function getLLM() {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({})) as { prompt?: string; messages?: ClientMessage[]; threadId?: string }
+  const body = await req.json().catch(() => ({})) as { prompt?: string; messages?: ClientMessage[]; threadId?: string; walletAddress?: string }
     const prompt = (body.prompt && typeof body.prompt === "string") ? body.prompt : undefined
     const incoming = Array.isArray(body.messages) ? body.messages : (prompt ? [{ role: "user", content: prompt }] as ClientMessage[] : [])
     if (!incoming.length) return NextResponse.json({ ok: false, error: "No prompt or messages provided" }, { status: 400 })
@@ -88,32 +88,90 @@ export async function POST(req: Request) {
       const text = (lastUser?.content || "").toLowerCase()
       if (!text) return null
 
+      // Helper: decide which address to use based on phrasing
+      const resolveAddressContext = async () => {
+        const { getAddresses } = await getAgent()
+        const { smart, eoa } = await getAddresses()
+        const clientEOA = (body.walletAddress && /^0x[a-fA-F0-9]{40}$/.test(body.walletAddress)) ? body.walletAddress : undefined
+
+        const mentionsConnected = /(connected|my wallet|metamask|my eoa|connected eoa|wallet address)/i.test(lastUser!.content)
+        const mentionsServer = /(server eoa|agent eoa|agent key|server wallet)/i.test(lastUser!.content)
+        const mentionsSmart = /(smart account|smart|gasless)/i.test(lastUser!.content)
+        const mentionsEOAOnly = /\beoa\b/i.test(lastUser!.content)
+
+        if (mentionsConnected) {
+          return { target: clientEOA, label: 'Connected EOA', missing: !clientEOA }
+        }
+        if (mentionsServer) {
+          return { target: eoa, label: 'Server EOA', missing: false }
+        }
+        if (mentionsSmart) {
+          return { target: smart, label: 'Smart Account', missing: false }
+        }
+        if (mentionsEOAOnly) {
+          // Prefer client EOA when unspecified, else server EOA
+          return { target: clientEOA || eoa, label: clientEOA ? 'Connected EOA' : 'Server EOA', missing: !clientEOA && false }
+        }
+        // Default to smart account
+        return { target: smart, label: 'Smart Account', missing: false }
+      }
+
       // Address
       if (/\b(address|wallet)\b/.test(text)) {
-        const addr = await getAddress()
-        return `Your smart account address is: ${addr}`
+        const { getAddresses } = await getAgent()
+        const { smart, eoa } = await getAddresses()
+        const clientEOA = (body.walletAddress && /^0x[a-fA-F0-9]{40}$/.test(body.walletAddress)) ? body.walletAddress : undefined
+        return [
+          `Smart Account (gasless): ${smart}`,
+          `Server EOA (agent key): ${eoa}`,
+          clientEOA ? `Connected EOA (your wallet): ${clientEOA}` : undefined,
+        ].filter(Boolean).join('\n')
       }
 
       // Balance (ETH or token)
       if (/\b(balance|balances)\b/.test(text)) {
+        const addrCtx = await resolveAddressContext()
+        if (addrCtx.missing) {
+          return 'No connected wallet detected. Connect your wallet to query the Connected EOA. '
+        }
+        const fmtUSD = (n: number) => {
+          if (!Number.isFinite(n) || n === 0) return '0.00'
+          const abs = Math.abs(n)
+          if (abs > 0 && abs < 0.01) return (n < 0 ? '-' : '') + '0.01'
+          return n.toFixed(2)
+        }
         // Try token address
         const tokenAddr = (lastUser!.content.match(/0x[a-fA-F0-9]{40}/) || [])[0]
         if (tokenAddr) {
-          const bal = await getBalance(tokenAddr as any)
-          return `Token balance (${tokenAddr}): ${bal}`
+          const bal = await getBalance(tokenAddr as any, addrCtx.target as any)
+          return `Token balance (${addrCtx.label}) ${tokenAddr}: ${parseFloat(bal).toFixed(4)}`
         }
         // Try symbol
         const symMatch = lastUser!.content.match(/\b([A-Z]{2,6})\b/)
         if (symMatch) {
           const token = resolveTokenBySymbol(symMatch[1])
           if (token && token.address !== 'ETH') {
-            const bal = await getBalance(token.address as any)
+            const bal = await getBalance(token.address as any, addrCtx.target as any)
             const formattedBal = parseFloat(bal).toFixed(4)
-            return `${token.symbol} balance: ${formattedBal}`
+            try {
+              const { getTokenPrice } = await getAgent()
+              const priceData = await getTokenPrice(token.symbol)
+              const usd = parseFloat(bal) * (priceData?.price || 0)
+              return `${token.symbol}: ${formattedBal} ($${fmtUSD(usd)})`
+            } catch {
+              return `${token.symbol}: ${formattedBal}`
+            }
           }
         }
-        const ethBal = await getBalance()
-        return `Your ETH balance: ${ethBal}`
+        const ethBal = await getBalance(undefined, addrCtx.target as any)
+        try {
+          const { getTokenPrice } = await getAgent()
+          const priceData = await getTokenPrice('ETH')
+          const usd = parseFloat(ethBal) * (priceData?.price || 0)
+          return `ETH: ${parseFloat(ethBal).toFixed(4)} ($${fmtUSD(usd)})`
+        } catch {
+          return `ETH: ${parseFloat(ethBal).toFixed(4)}`
+        }
       }
 
       // Market data and prices
@@ -165,7 +223,11 @@ export async function POST(req: Request) {
       if (/\b(portfolio|portfolio overview|total value|net worth)\b/.test(text)) {
         try {
           const { getPortfolioOverview } = await getAgent()
-          const portfolio = await getPortfolioOverview()
+          const addrCtx = await resolveAddressContext()
+          if (addrCtx.missing) {
+            return 'No connected wallet detected. Connect your wallet to query the Connected EOA portfolio.'
+          }
+          const portfolio = await getPortfolioOverview(addrCtx.target as any)
           const fmtUSD = (n: number) => {
             if (!Number.isFinite(n) || n === 0) return '0.00'
             const abs = Math.abs(n)
@@ -176,7 +238,7 @@ export async function POST(req: Request) {
             const formattedBalance = parseFloat(asset.balance).toFixed(4)
             return `${asset.symbol}: ${formattedBalance} ($${fmtUSD(asset.valueUSD)})`
           }).join('\n')
-          return `Portfolio Overview:\nTotal Value: $${fmtUSD(portfolio.totalValueUSD)}\n\nAssets:\n${assets}`
+          return `Portfolio Overview (${addrCtx.label}):\nTotal Value: $${fmtUSD(portfolio.totalValueUSD)}\n\nAssets:\n${assets}`
         } catch (e) {
           return `Couldn't fetch portfolio: ${e instanceof Error ? e.message : 'Unknown error'}`
         }

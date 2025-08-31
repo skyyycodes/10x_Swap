@@ -117,12 +117,13 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur dark:bg-[#171717]/95 shadow">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="font-bold text-lg md:text-xl">
-          PharosDEX
+        <Link href="/" className="font-extrabold text-lg md:text-xl tracking-tight">
+          <span className="text-slate-900 dark:text-white">10x</span>
+          <span className="bg-gradient-to-r from-fuchsia-500 to-indigo-500 bg-clip-text text-transparent">Swap</span>
         </Link>
 
         {/* Desktop navigation - Centered */}
-        <nav className="hidden md:flex gap-6 lg:gap-8 absolute left-1/2 transform -translate-x-1/2">
+  <nav className="hidden md:flex gap-6 lg:gap-8 absolute left-1/2 -translate-x-1/2 transform">
           {navItems.map((item) => (
             <Link
               key={item.href}

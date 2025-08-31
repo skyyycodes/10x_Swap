@@ -14,7 +14,7 @@ const fontSans = FontSans({ subsets: ['latin'], variable: '--font-sans' })
 const fontMono = FontMono({ subsets: ['latin'], weight: ['400'], variable: '--font-mono' })
 
 export const metadata = {
-  title: 'PharosDEX - Cryptocurrency Market Explorer',
+  title: '10xSwap - Cryptocurrency Market Explorer',
   description: 'Explore cryptocurrencies, exchanges, and market data with our responsive crypto platform',
 }
 
@@ -33,12 +33,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ExistingProviders>
             <Header />
             {children}
+            <ChatBubble />
           </ExistingProviders>
         </ReduxProvider>
         <SpeedInsights />
         <Analytics />
   <Toaster />
-  <ChatBubble />
       </body>
     </html>
   )

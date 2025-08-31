@@ -18,6 +18,10 @@ export const BASE_SYMBOL_TO_TOKEN: Record<string, TokenInfo> = {
   // Tether USD (USDT) on Base Sepolia (user-provided)
   USDT: { symbol: 'USDT', address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', decimals: 6, coingeckoId: 'tether' },
   DAI: { symbol: 'DAI', address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', decimals: 18, coingeckoId: 'dai' },
+  // Wrapped Bitcoin on Base (8 decimals)
+  WBTC: { symbol: 'WBTC', address: '0x0555e30da8f98308edb960aa94c0db47230d2b9c', decimals: 8, coingeckoId: 'wrapped-bitcoin' },
+  // Common typo/alias mapped to WBTC
+  WBTS: { symbol: 'WBTC', address: '0x0555e30da8f98308edb960aa94c0db47230d2b9c', decimals: 8, coingeckoId: 'wrapped-bitcoin' },
   // USDbC (old bridged USDC) left out intentionally
 }
 

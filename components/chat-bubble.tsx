@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { MessageCircle, Send, Bot, X } from "lucide-react"
+import { useAccount } from "wagmi"
 
 type Msg = { role: "user" | "assistant"; content: string }
 
@@ -13,6 +14,7 @@ export default function ChatBubble() {
   const [threadId, setThreadId] = useState<string | undefined>(undefined)
   const [showRules, setShowRules] = useState(true)
   const endRef = useRef<HTMLDivElement | null>(null)
+  const { address } = useAccount()
 
   const scrollToEnd = useCallback(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [])
   useEffect(() => { scrollToEnd() }, [messages, scrollToEnd])
@@ -23,11 +25,11 @@ export default function ChatBubble() {
     setInput("")
     setMessages((m) => [...m, { role: "user", content: text }])
     setLoading(true)
-    try {
+  try {
       const res = await fetch("/api/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, { role: "user", content: text }], threadId }),
+    body: JSON.stringify({ messages: [...messages, { role: "user", content: text }], threadId, walletAddress: address }),
       })
       const json = await res.json()
       if (json?.ok) {
@@ -62,13 +64,13 @@ export default function ChatBubble() {
       if (m.index > lastIndex) out.push(text.slice(lastIndex, m.index))
       if (tx) {
         out.push(
-          <a key={`${m.index}-tx`} href={`${explorerBase}/tx/${tx}`} target="_blank" rel="noreferrer" className="text-fuchsia-300 underline underline-offset-2">
+          <a key={`${m.index}-tx`} href={`${explorerBase}/tx/${tx}`} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2 dark:text-[#F3C623]">
             {tx}
           </a>
         )
       } else if (addr) {
         out.push(
-          <a key={`${m.index}-addr`} href={`${explorerBase}/address/${addr}`} target="_blank" rel="noreferrer" className="text-indigo-300 underline underline-offset-2">
+          <a key={`${m.index}-addr`} href={`${explorerBase}/address/${addr}`} target="_blank" rel="noreferrer" className="text-blue-500 underline underline-offset-2 dark:text-[#F3C623]">
             {addr}
           </a>
         )
@@ -98,13 +100,13 @@ export default function ChatBubble() {
       <motion.button
         aria-label="Open AI chat"
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-5 right-5 z-50 grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 text-white shadow-xl shadow-fuchsia-500/20 focus:outline-none"
+        className="fixed bottom-5 right-5 z-50 grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-xl shadow-blue-500/20 focus:outline-none dark:from-[#F3C623] dark:to-[#D9A800] dark:shadow-[#F3C623]/20"
         whileHover={{ scale: 1.07 }}
         whileTap={{ scale: 0.95 }}
       >
-        <span className="absolute inset-0 rounded-full bg-fuchsia-500/30 blur-xl -z-10" aria-hidden />
+        <span className="absolute inset-0 rounded-full bg-blue-500/30 blur-xl -z-10 dark:bg-[#F3C623]/30" aria-hidden />
         <MessageCircle className="h-6 w-6" />
-        <span className="absolute -z-10 inline-flex h-full w-full animate-ping rounded-full bg-fuchsia-400/20" aria-hidden />
+        <span className="absolute -z-10 inline-flex h-full w-full animate-ping rounded-full bg-blue-400/20 dark:bg-[#F3C623]/20" aria-hidden />
       </motion.button>
 
       {/* Chat Panel */}
@@ -116,13 +118,13 @@ export default function ChatBubble() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 260, damping: 22 }}
-            className="fixed bottom-24 right-5 z-50 flex h-[34rem] w-[26rem] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white/90 text-slate-900 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-gradient-to-b dark:from-slate-900/80 dark:to-slate-950/80 dark:text-slate-100"
+            className="fixed bottom-24 right-5 z-50 flex h-[34rem] w-[26rem] flex-col overflow-hidden rounded-2xl border border-slate-200/60 bg-white/95 text-slate-900 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-[#171717]/95 dark:text-slate-100"
           >
             {/* Header */}
             <div className="flex items-center justify-between gap-3 border-b border-slate-200/60 px-4 py-3 dark:border-white/10">
               <div className="flex items-center gap-2">
                 <div className="grid h-8 w-8 place-items-center rounded-full bg-white/10">
-                  <Bot className="h-4 w-4 text-fuchsia-300" />
+                  <Bot className="h-4 w-4 text-blue-400 dark:text-[#F3C623]" />
                 </div>
                 <div className="text-sm font-semibold">0xGasless AI Agent</div>
               </div>
@@ -141,7 +143,7 @@ export default function ChatBubble() {
                   <button
                     key={x.label}
                     onClick={() => usePreset(x.prompt)}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 hover:border-fuchsia-400/40 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-white"
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 hover:border-blue-400/40 hover:text-slate-900 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:text-white dark:hover:border-[#F3C623]/50"
                   >
                     {x.label}
                   </button>
@@ -162,8 +164,8 @@ export default function ChatBubble() {
                   </button>
                 </div>
                 {showRules && (
-                  <div className="relative rounded-lg border border-fuchsia-300/30 bg-fuchsia-50/80 p-2 dark:border-fuchsia-400/30 dark:bg-fuchsia-950/20">
-                    <div className="absolute left-0 top-0 h-full w-1 rounded-l-lg bg-fuchsia-400/60 dark:bg-fuchsia-500/50" aria-hidden />
+                  <div className="relative rounded-lg border border-blue-300/30 bg-blue-50/80 p-2 dark:border-[#F3C623]/30 dark:bg-[#F3C623]/10">
+                    <div className="absolute left-0 top-0 h-full w-1 rounded-l-lg bg-blue-400/60 dark:bg-[#F3C623]/60" aria-hidden />
                     <div className="grid max-h-48 gap-2 overflow-y-auto pr-2 pl-2">
                       <div>
                       <div className="mb-1 font-medium text-slate-900 dark:text-slate-200">Supported actions</div>
@@ -212,13 +214,13 @@ export default function ChatBubble() {
                   <div className="flex max-w-[85%] items-start gap-2">
                     {m.role === "assistant" && (
                       <div className="mt-1 hidden h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 sm:grid">
-                        <Bot className="h-3.5 w-3.5 text-fuchsia-300" />
+                        <Bot className="h-3.5 w-3.5 text-blue-400 dark:text-[#F3C623]" />
                       </div>
                     )}
                     <div
                       className={
                         m.role === "user"
-                          ? "max-w-full rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-600 px-3 py-2 text-sm text-white shadow-md"
+                          ? "max-w-full rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 px-3 py-2 text-sm text-white shadow-md dark:from-[#F3C623] dark:to-[#D9A800]"
                           : "max-w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 shadow dark:border-white/10 dark:bg-white/5 dark:text-slate-100"
                       }
                     >
@@ -241,7 +243,7 @@ export default function ChatBubble() {
 
             {/* Input */}
             <div className="border-t border-slate-200/60 p-3 dark:border-white/10">
-              <div className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-inner focus-within:border-fuchsia-400/40 dark:border-white/10 dark:bg-white/5">
+              <div className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-inner focus-within:border-blue-400/40 dark:border-white/10 dark:bg-white/5 dark:focus-within:border-[#F3C623]/50">
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -255,7 +257,7 @@ export default function ChatBubble() {
                   disabled={loading}
                   whileHover={{ scale: loading ? 1 : 1.05 }}
                   whileTap={{ scale: loading ? 1 : 0.95 }}
-                  className="grid h-9 w-9 place-items-center rounded-lg bg-fuchsia-600 text-white shadow disabled:cursor-not-allowed disabled:opacity-60"
+                  className="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow shadow-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:from-[#F3C623] dark:to-[#D9A800] dark:shadow-[#F3C623]/20"
                 >
                   {loading ? (
                     <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

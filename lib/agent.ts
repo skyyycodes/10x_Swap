@@ -117,9 +117,25 @@ async function buildAgent() {
       }
     }
 
-    async function getBalance(tokenAddress?: Address): Promise<string> {
+    // Explicitly expose the EOA address (your MetaMask/private key address)
+    async function getEOAAddress(): Promise<Address> {
       try {
-        const addr = await getAddress()
+        return account.address as Address
+      } catch (e: any) {
+        throw new Error(`getEOAAddress failed: ${e?.message || e}`)
+      }
+    }
+
+    // Return both smart account and EOA addresses
+    async function getAddresses(): Promise<{ smart: Address; eoa: Address }> {
+      const smart = await getAddress()
+      const eoa = await getEOAAddress()
+      return { smart, eoa }
+    }
+
+  async function getBalance(tokenAddress?: Address, targetAddress?: Address): Promise<string> {
+      try {
+    const addr = targetAddress || await getAddress()
         if (!tokenAddress) {
           const bal = await publicClient.getBalance({ address: addr })
           return formatUnits(bal, 18)
@@ -622,7 +638,7 @@ async function buildAgent() {
     }
 
     // Also support common token names (user might ask "price of solana")
-    const NAME_TO_SYMBOL: Record<string, string> = {
+  const NAME_TO_SYMBOL: Record<string, string> = {
       BITCOIN: 'BTC',
       ETHEREUM: 'ETH',
       SOLANA: 'SOL',
@@ -640,6 +656,7 @@ async function buildAgent() {
       LITECOIN: 'LTC',
       TON: 'TON',
       TONCOIN: 'TON',
+  WRAPPEDBITCOIN: 'WBTC',
     }
 
     async function getTokenPrice(symbol: string): Promise<any> {
@@ -650,7 +667,7 @@ async function buildAgent() {
         const nameKey = sym.replace(/[^A-Z0-9]/g, '')
         // If a common name was provided (e.g., SOLANA), map to its symbol first
         const mappedFromName = NAME_TO_SYMBOL[nameKey]
-        if (mappedFromName) {
+        if (mappedFromName && mappedFromName !== sym) {
           return await getTokenPrice(mappedFromName)
         }
         const token = resolveTokenBySymbol(sym)
@@ -667,7 +684,7 @@ async function buildAgent() {
           if (!res.ok) throw new Error(`Failed to fetch ${sym} price: ${res.status}`)
           const data = await res.json()
           const item = data[token.coingeckoId]
-          return { symbol: sym, price: item.usd, change24h: item.usd_24h_change }
+          return { symbol: token.symbol, price: item.usd, change24h: item.usd_24h_change }
         }
         // Fallback popular non-Base tickers (e.g., BTC)
         const cgId = COINGECKO_FALLBACK[sym]
@@ -741,19 +758,19 @@ async function buildAgent() {
       }
     }
 
-    async function getPortfolioOverview(): Promise<any> {
+  async function getPortfolioOverview(targetAddress?: Address): Promise<any> {
       try {
-        const address = await getAddress()
-        const ethBalance = await getBalance()
+    const address = targetAddress || await getAddress()
+    const ethBalance = await getBalance(undefined, address)
         
         // Get supported token balances
-        const supportedTokens = ['USDC', 'USDT', 'WETH', 'DAI']
+  const supportedTokens = ['USDC', 'USDT', 'WETH', 'DAI', 'WBTC']
         const tokenBalances = await Promise.all(
           supportedTokens.map(async (symbol) => {
             try {
               const token = resolveTokenBySymbol(symbol)
               if (token && token.address !== 'ETH') {
-                const balance = await getBalance(token.address as Address)
+                const balance = await getBalance(token.address as Address, address)
                 const price = await getTokenPrice(symbol)
                 return {
                   symbol,
@@ -802,7 +819,9 @@ async function buildAgent() {
       publicClient,
       eoaClient,
       getAddress,
-      getBalance,
+  getEOAAddress,
+  getAddresses,
+  getBalance, // (tokenAddress?: Address, targetAddress?: Address)
       checkTransaction,
       readContract,
       smartTransfer,
@@ -813,7 +832,7 @@ async function buildAgent() {
       getTokenPrice,
       getGasEstimate,
       getTransactionHistory,
-      getPortfolioOverview,
+  getPortfolioOverview, // (targetAddress?: Address)
       formatBalance,
     }
   } catch (e: any) {
@@ -831,6 +850,8 @@ export type Agent = Awaited<ReturnType<typeof buildAgent>>
 // Public list of available high-level actions we currently support via this wrapper
 export const AVAILABLE_AGENT_ACTIONS = [
   'getAddress',
+  'getEOAAddress',
+  'getAddresses',
   'getBalance',
   'checkTransaction',
   'readContract',
