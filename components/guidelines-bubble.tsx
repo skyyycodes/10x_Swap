@@ -2,15 +2,15 @@
 import React, { useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { BookOpen, X } from "lucide-react"
-import { FUJI_SYMBOL_TO_TOKEN, BASE_SYMBOL_TO_TOKEN } from "@/lib/tokens"
+import { FUJI_SYMBOL_TO_TOKEN, BASE_SYMBOL_TO_TOKEN, AVALANCHE_SYMBOL_TO_TOKEN } from "@/lib/tokens"
 import { useChainId } from "wagmi"
 
 export default function GuidelinesBubble() {
   const [open, setOpen] = useState(false)
   const chainId = useChainId() || 43113
-  const chainLabel = chainId === 8453 ? 'Base' : 'Avalanche Fuji'
-  const nativeSymbol = chainId === 8453 ? 'ETH' : 'AVAX'
-  const TOKENS = chainId === 8453 ? BASE_SYMBOL_TO_TOKEN : FUJI_SYMBOL_TO_TOKEN
+  const chainLabel = chainId === 8453 ? 'Base' : (chainId === 43114 ? 'Avalanche' : 'Avalanche Fuji')
+  const nativeSymbol = (chainId === 43113 || chainId === 43114) ? 'AVAX' : 'ETH'
+  const TOKENS = chainId === 8453 ? BASE_SYMBOL_TO_TOKEN : (chainId === 43114 ? AVALANCHE_SYMBOL_TO_TOKEN : FUJI_SYMBOL_TO_TOKEN)
   const SUPPORTED: string[] = chainId === 8453 ? ["ETH", "WETH", "USDC"] : ["AVAX", "WAVAX", "USDC"]
 
   return (

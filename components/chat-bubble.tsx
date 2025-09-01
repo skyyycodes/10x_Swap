@@ -35,7 +35,7 @@ export default function ChatBubble({ variant = "floating", align = "right" }: Ch
       const res = await fetch("/api/agent/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, { role: "user", content: text }], threadId, walletAddress: address }),
+        body: JSON.stringify({ messages: [...messages, { role: "user", content: text }], threadId, walletAddress: address, chainId }),
       })
       const json = await res.json()
       if (json?.ok) {
@@ -53,9 +53,9 @@ export default function ChatBubble({ variant = "floating", align = "right" }: Ch
 
   const typing = loading
 
-  const chainLabel = chainId === 8453 ? 'Base' : 'Avalanche Fuji'
-  const explorerBase = chainId === 8453 ? 'https://basescan.org' : 'https://testnet.snowtrace.io'
-  const nativeSymbol = chainId === 8453 ? 'ETH' : 'AVAX'
+  const chainLabel = chainId === 8453 ? 'Base' : chainId === 43114 ? 'Avalanche' : 'Avalanche Fuji'
+  const explorerBase = chainId === 8453 ? 'https://basescan.org' : (chainId === 43114 ? 'https://snowtrace.io' : 'https://testnet.snowtrace.io')
+  const nativeSymbol = (chainId === 43113 || chainId === 43114) ? 'AVAX' : 'ETH'
 
   const renderContent = (text: string) => {
     const re = /(0x[a-fA-F0-9]{64})|(0x[a-fA-F0-9]{40})/g
