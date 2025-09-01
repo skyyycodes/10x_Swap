@@ -1,20 +1,46 @@
-# 10xSwap: AI-Powered Gasless Crypto Explorer
+# 10xSwap: AI-Powered Multi-Chain Gasless Crypto Explorer
 
 10xSwap is a modern web application that allows users to explore cryptocurrency markets, manage assets, and execute gasless transactions across multiple networks (Base and Avalanche). It features an AI-powered chat agent that can understand natural language commands to perform actions like checking balances, getting token prices, and executing swaps and transfers.
-## How It Works: Project Architecture
 
-The project is built on **Next.js** using the App Router, providing a fast, server-rendered frontend with serverless API endpoints for backend logic.
+## Table of Contents
+
+- [🏗️ System Architecture](#️-system-architecture)
+- [⚙️ Backend Architecture](#️-backend-architecture)
+- [🚀 How It Works](#-how-it-works-project-architecture)
+- [🛠️ Getting Started](#️-getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#1-installation)
+  - [Environment Setup](#2-environment-setup)
+  - [Running the Application](#3-running-the-application)
+- [🔧 API Keys & Configuration](#-api-keys--configuration)
+- [📡 API Endpoints](#-api-endpoints)
+- [🤖 AI Agent Features](#-ai-agent-features)
+- [📖 Documentation](#-documentation)
+
+## 🏗️ System Architecture
+
+For a comprehensive overview of the system design, multi-chain infrastructure, and technology stack, see:
+**[📋 System Architecture Documentation](./SYSTEM_ARCHITECTURE.md)**
+
+## ⚙️ Backend Architecture
+
+For detailed technical implementation details, agent factory patterns, transaction pipeline, and performance optimization strategies, see:
+**[🔧 Backend Architecture Documentation](./BACKEND_ARCHITECTURE.md)**
+
+## 🚀 How It Works: Project Architecture
+
+The project is built on **Next.js** using the App Router, providing a fast, server-rendered frontend with serverless API endpoints for backend logic. It supports multiple blockchain networks including **Base** and **Avalanche** mainnet with gasless transaction capabilities.
 
 -   **`app/`**: Contains the main pages (`/`, `/cryptocurrencies`, etc.) and the primary UI layout.
 -   **`components/`**: Houses all reusable React components, including the chat interface, data tables, and UI primitives from `shadcn/ui`.
 -   **`lib/`**: The core of the backend logic resides here.
-    -   `lib/agent.ts`: Configures the 0xGasless Agentkit, defines all blockchain interaction functions (e.g., `getBalance`, `smartSwap`), and sets up the AI agent's tools.
-    -   `lib/tokens.ts`: A registry for supported ERC-20 tokens on the Base network.
+    -   `lib/agent.ts`: Configures the 0xGasless Agentkit for multi-chain support, defines all blockchain interaction functions (e.g., `getBalance`, `smartSwap`), and sets up the AI agent's tools.
+    -   `lib/tokens.ts`: A registry for supported ERC-20 tokens across Base and Avalanche networks.
 -   **`app/api/`**: Contains all backend serverless functions. The most important is `/api/agent/chat`, which serves as the brain for the AI chat.
 
-The application runs on the **Base** network (or Base Sepolia for testing), leveraging its low fees and fast transaction times.
+The application supports **Base** (8453) and **Avalanche** (43114) mainnets, as well as Fuji testnet (43113), leveraging their unique advantages and fast transaction times.
 
-## Getting Started
+## 🛠️ Getting Started
 
 Follow these steps to set up and run the project locally.
 
@@ -35,36 +61,13 @@ bun install
 
 ### 2. Environment Setup
 
-Create a `.env.local` file in the root of the project by copying the example below. This file will store all your secret keys and configuration variables.
+Create a `.env.local` file in the root of the project by copying from `.env.example`. This file will store all your secret keys and configuration variables.
 
-**.env.example**
-
-```env
-# Server's private key for signing transactions (EOA)
-# DO NOT USE A KEY WITH SIGNIFICANT REAL FUNDS
-PRIVATE_KEY="YOUR_SERVER_WALLET_PRIVATE_KEY"
-
-# RPC endpoint for the Base network
-# Examples: https://mainnet.base.org, or from Infura/Alchemy
-RPC_URL="YOUR_BASE_RPC_URL"
-
-# Chain ID: 8453 for Base Mainnet, 84532 for Base Sepolia
-CHAIN_ID="8453"
-
-# 0xGasless API Key and Paymaster URL for sponsoring transactions
-GASLESS_API_KEY="YOUR_0XGASLESS_API_KEY"
-GASLESS_PAYMASTER_URL="YOUR_0XGASLESS_PAYMASTER_URL"
-
-# API key for an LLM provider (choose one)
-# Recommended: OpenRouter for model flexibility
-OPENROUTER_API_KEY="YOUR_OPENROUTER_API_KEY"
-# Or, use OpenAI directly
-# OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
-
-# (Optional) API keys for market data providers
-COINRANKING_API_KEY="YOUR_COINRANKING_API_KEY"
-OX_API_KEY="YOUR_0X_SWAP_API_KEY"
+```bash
+cp .env.example .env.local
 ```
+
+For detailed setup instructions and API key sources, see the [🔧 API Keys & Configuration](#-api-keys--configuration) section below.
 
 ### 3. Running the Application
 
@@ -76,7 +79,58 @@ bun run dev
 
 The application will be available at `http://localhost:3000`.
 
-## API Endpoints
+## 🔧 API Keys & Configuration
+
+The application requires several API keys for full functionality. Here's where to obtain each one:
+
+### 🔑 Required API Keys
+
+| Service | Environment Variable | Where to Get | Purpose |
+|---------|---------------------|--------------|---------|
+| **0xGasless** | `GASLESS_API_KEY_*` | [0xGasless Dashboard](https://dashboard.0xgasless.com/) | Gasless transaction sponsorship |
+| **0xGasless Paymaster** | `GASLESS_PAYMASTER_URL_*` | [0xGasless Dashboard](https://dashboard.0xgasless.com/) | Per-chain paymaster endpoints |
+| **OpenRouter** | `OPENROUTER_API_KEY` | [OpenRouter Platform](https://openrouter.ai/keys) | AI/LLM services (recommended) |
+| **OpenAI** | `OPENAI_API_KEY` | [OpenAI Platform](https://platform.openai.com/api-keys) | Alternative AI provider |
+| **CoinRanking** | `COINRANKING_API_KEY` | [CoinRanking API](https://developers.coinranking.com/api) | Cryptocurrency market data |
+| **0x Protocol** | `OX_API_KEY` | [0x API Dashboard](https://0x.org/api) | Token swap price quotes |
+
+### 🔗 RPC Endpoints
+
+| Network | Environment Variable | Free Options | Premium Options |
+|---------|---------------------|--------------|-----------------|
+| **Base Mainnet** | `RPC_URL_BASE` | [Base Public RPC](https://mainnet.base.org) | [Alchemy](https://alchemy.com), [Infura](https://infura.io) |
+| **Avalanche Mainnet** | `RPC_URL_AVALANCHE` | [Avalanche Public RPC](https://api.avax.network/ext/bc/C/rpc) | [Alchemy](https://alchemy.com), [Infura](https://infura.io) |
+| **Fuji Testnet** | `RPC_URL_FUJI` | [Fuji Public RPC](https://api.avax-test.network/ext/bc/C/rpc) | [Alchemy](https://alchemy.com), [Infura](https://infura.io) |
+
+### ⚙️ Multi-Chain Configuration
+
+The application supports per-chain configuration. Each chain requires its own set of API keys and endpoints:
+
+- **Base Mainnet (8453)**: `*_BASE` suffix
+- **Avalanche Mainnet (43114)**: `*_AVALANCHE` suffix  
+- **Fuji Testnet (43113)**: `*_FUJI` suffix
+
+Example configuration pattern:
+```env
+# Base Mainnet
+GASLESS_API_KEY_BASE="your_base_api_key"
+GASLESS_PAYMASTER_URL_BASE="your_base_paymaster_url"
+RPC_URL_BASE="your_base_rpc_url"
+
+# Avalanche Mainnet
+GASLESS_API_KEY_AVALANCHE="your_avalanche_api_key"
+GASLESS_PAYMASTER_URL_AVALANCHE="your_avalanche_paymaster_url"
+RPC_URL_AVALANCHE="your_avalanche_rpc_url"
+```
+
+### 🔐 Security Notes
+
+- **NEVER** use a private key with significant real funds for `PRIVATE_KEY`
+- Use a dedicated wallet for testing and development
+- Keep your `.env.local` file secure and never commit it to version control
+- Consider using different API keys for development and production environments
+
+## 📡 API Endpoints
 
 The project's backend is primarily centered around a single, powerful API endpoint that drives the AI chat.
 
@@ -95,7 +149,9 @@ This is the main endpoint for all user interactions with the AI agent.
     { "role": "user", "content": "what's my address?" }
   ],
   "threadId": "optional-session-id",
-  "walletAddress": "0x... (optional, from user's connected wallet)"
+  "walletAddress": "0x... (optional, from user's connected wallet)",
+  "chainId": 8453
+}
 }
 ```
 
@@ -109,33 +165,29 @@ This is the main endpoint for all user interactions with the AI agent.
 }
 ```
 
-### Other API Routes
+## 🤖 AI Agent Features
 
--   `/api/db/`: Handles database interactions (not fully implemented).
--   `/api/price/`: Could be used for direct price queries (currently handled within the agent).
--   `/api/poller/`, `/api/rules/`, `/api/logs/`: Support for background tasks and internal tooling.
+### 0xGasless & AI Agent Implementation
 
-## 0xGasless & AI Agent Implementation
-
-The core of this project is the integration of gasless transactions via **0xGasless Agentkit** and natural language processing with an AI agent.
+The core of this project is the integration of gasless transactions via **0xGasless Agentkit** and natural language processing with an AI agent across multiple blockchain networks.
 
 ### 0xGasless Smart Account
 
-We use an ERC-4337 Smart Account to execute transactions on behalf of the user without requiring them to pay for gas directly.
+We use an ERC-4337 Smart Account to execute transactions on behalf of the user without requiring them to pay for gas directly. The system supports multiple chains with per-chain configuration.
 
-1.  **Initialization**: In `lib/agent.ts`, we configure the `Agentkit` with the server's private key. This key controls the Smart Account. The `GASLESS_PAYMASTER_URL` is used to sponsor the transactions, making them "gasless" for the end-user.
+1.  **Multi-Chain Initialization**: In `lib/agent.ts`, we configure the `Agentkit` with chain-specific parameters. Each chain has its own API keys, paymaster URLs, and RPC endpoints.
 
     ```typescript
     // lib/agent.ts
     import { Agentkit } from '@0xgasless/agentkit';
 
-    // ... inside buildAgent()
+    // ... inside buildAgent(chainId)
     const agentkit = await Agentkit.configureWithWallet({
       privateKey: PRIVATE_KEY,
-      rpcUrl: RPC_URL,
-      apiKey: GASLESS_API_KEY,
-      chainID: CHAIN_ID,
-      paymasterUrl: GASLESS_PAYMASTER_URL,
+      rpcUrl: getRpcUrl(chainId),
+      apiKey: getGaslessApiKey(chainId),
+      chainID: chainId,
+      paymasterUrl: getPaymasterUrl(chainId),
     });
 
     // The smart account is accessed via agentkit.smartAccount
@@ -218,3 +270,30 @@ Use these keywords in your balance or portfolio queries to specify the address.
 - **Server EOA**: `server eoa`, `agent key`, `server wallet`
 - **Smart Account**: `smart account`, `smart`, `gasless`
 - **Plain "eoa"**: Defaults to your connected wallet if available, otherwise falls back to the server EOA.
+
+### Other API Routes
+
+-   `/api/db/`: Handles database interactions (not fully implemented).
+-   `/api/price/`: Could be used for direct price queries (currently handled within the agent).
+-   `/api/poller/`, `/api/rules/`, `/api/logs/`: Support for background tasks and internal tooling.
+
+## 📖 Documentation
+
+### Architecture Documentation
+
+- **[📋 System Architecture](./SYSTEM_ARCHITECTURE.md)**: Comprehensive system overview, multi-chain infrastructure, technology stack, data flow, and security considerations
+- **[🔧 Backend Architecture](./BACKEND_ARCHITECTURE.md)**: Detailed technical implementation, agent factory patterns, transaction pipeline, AI integration, and performance optimization
+
+### Quick Links
+
+- [🚀 Getting Started](#️-getting-started) - Set up the project locally
+- [🔧 API Keys & Configuration](#-api-keys--configuration) - Complete setup guide with all API sources
+- [🤖 AI Agent Features](#-ai-agent-features) - Understanding the AI chat capabilities
+- [📡 API Endpoints](#-api-endpoints) - Backend API reference
+
+### Support
+
+For questions or issues:
+1. Check the [System Architecture](./SYSTEM_ARCHITECTURE.md) for high-level understanding
+2. Review the [Backend Architecture](./BACKEND_ARCHITECTURE.md) for implementation details
+3. Ensure all API keys are correctly configured using the [configuration guide](#-api-keys--configuration)
