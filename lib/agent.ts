@@ -1,6 +1,6 @@
  import 'server-only'
 import { createPublicClient, createWalletClient, http, parseUnits, formatUnits, erc20Abi } from 'viem'
-import { base, baseSepolia } from 'viem/chains'
+import { avalancheFuji, base } from 'viem/chains'
 import type { Address, Chain } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { Agentkit } from '@0xgasless/agentkit'
@@ -14,10 +14,10 @@ function getEnv(name: string, required = true): string | undefined {
   return v
 }
 
-// Chain selection: default to Base mainnet unless CHAIN_ID says otherwise
+// Chain selection: default to Avalanche Fuji unless CHAIN_ID explicitly selects Base
 function getChain(): Chain {
-  const cid = Number(getEnv('CHAIN_ID', false) ?? '8453')
-  return cid === 84532 ? baseSepolia : base
+  const id = Number(process.env.CHAIN_ID || 43113)
+  return id === 8453 ? base : avalancheFuji
 }
 
 // Cache the singleton promise so we initialize only once per server runtime
@@ -30,13 +30,12 @@ async function buildAgent() {
   const PRIVATE_KEY = (PK_RAW.startsWith('0x') ? PK_RAW : `0x${PK_RAW}`) as `0x${string}`
   const RPC_RAW = getEnv('RPC_URL') as string
   const RPC_URL = (RPC_RAW.startsWith('http://') || RPC_RAW.startsWith('https://')) ? RPC_RAW : `https://${RPC_RAW}`
-    // CHAIN_ID can be 8453 (Base) or 84532 (Base Sepolia testnet)
-    const CHAIN_ID = Number(getEnv('CHAIN_ID'
-        , false) ?? '8453')
+  // Dynamic runtime; defaults to Fuji if CHAIN_ID not provided
+  const CHAIN_ID = Number(process.env.CHAIN_ID || 43113)
     const GASLESS_API_KEY = getEnv('GASLESS_API_KEY') as string
     const GASLESS_PAYMASTER_URL = getEnv('GASLESS_PAYMASTER_URL') as string
 
-    const chain = CHAIN_ID === 84532 ? baseSepolia : base
+  const chain = CHAIN_ID === 8453 ? base : avalancheFuji
 
     // Quick sanity checks for common RPC mistakes (e.g., missing Infura/Alchemy project path)
     const lowerUrl = RPC_URL.toLowerCase()
@@ -71,9 +70,10 @@ async function buildAgent() {
     // Preflight: verify the RPC is reachable and matches CHAIN_ID
     try {
       const rpcChainId = await publicClient.getChainId()
-      if (rpcChainId !== chain.id) {
+    if (rpcChainId !== chain.id) {
+  const name = chain.id === 8453 ? 'Base' : 'Avalanche Fuji'
         throw new Error(
-          `RPC chainId ${rpcChainId} does not match expected ${chain.id} (${chain.id === 8453 ? 'Base' : 'Base Sepolia'}). ` +
+          `RPC chainId ${rpcChainId} does not match expected ${chain.id} (${name}). ` +
           `Check CHAIN_ID and RPC_URL.`
         )
       }
@@ -237,82 +237,74 @@ async function buildAgent() {
       }
     }
 
-    // Swap via 0x Swap API on Base. Supports ETH<->ERC20 and ERC20<->ERC20.
+    // Swap is chain-aware. Enabled on Base (via 0x); disabled on Fuji.
     async function smartSwap(opts: { tokenInSymbol: string; tokenOutSymbol: string; amount: string; slippage?: number; wait?: boolean }): Promise<{ hash: string; details: any }> {
-      const { tokenInSymbol, tokenOutSymbol, amount, slippage = 0.5, wait = true } = opts
-      try {
-        const chainId = chain.id
-        if (chainId !== 8453 && chainId !== 84532) throw new Error(`Unsupported chain ${chainId} for swap`)
-
-        const tIn = resolveTokenBySymbol(tokenInSymbol)
-        const tOut = resolveTokenBySymbol(tokenOutSymbol)
-        if (!tIn) throw new Error(`Unknown tokenIn ${tokenInSymbol}`)
-        if (!tOut) throw new Error(`Unknown tokenOut ${tokenOutSymbol}`)
-
-        const sa = (agentkit as any)?.smartAccount
-        if (!sa) throw new Error('Smart account not available for swap')
-        const taker = await sa.getAddress()
-
-        // 0x Swap API host per network
-        const host = chainId === 8453 ? 'https://base.api.0x.org' : 'https://base-sepolia.api.0x.org'
-
-        // Build sell token identifiers for 0x
-        const sellToken = tIn.address === 'ETH' ? 'ETH' : (tIn.address as Address)
-        const buyToken = tOut.address === 'ETH' ? 'ETH' : (tOut.address as Address)
-
-        // Amount in base units
-        const sellAmount = parseUnits(amount, tIn.decimals)
-        const slippagePct = Math.max(0.01, Math.min(5, slippage)) / 100 // 0.01% - 5%
-
-        // Fetch quote
-        const url = new URL(host + '/swap/v1/quote')
-        url.searchParams.set('sellToken', sellToken)
-        url.searchParams.set('buyToken', buyToken)
-        url.searchParams.set('sellAmount', sellAmount.toString())
-        url.searchParams.set('taker', taker)
-        url.searchParams.set('slippagePercentage', slippagePct.toString())
-        // Optional affiliate
-        // url.searchParams.set('affiliateAddress', taker)
-
-        const res = await fetch(url.toString(), { headers: { '0x-api-key': process.env.OX_API_KEY || '' } })
-        if (!res.ok) {
-          const errTxt = await res.text().catch(() => '')
-          throw new Error(`0x quote failed: ${res.status} ${errTxt}`)
-        }
-        const quote = await res.json()
-
-        // For ERC20 sells, ensure allowance to allowanceTarget
-        if (tIn.address !== 'ETH') {
-          const allowanceTarget = quote.allowanceTarget as Address
-          const current: bigint = await publicClient.readContract({
-            address: tIn.address as Address,
-            abi: erc20Abi,
-            functionName: 'allowance',
-            args: [taker as Address, allowanceTarget],
-          }) as unknown as bigint
-          if (current < sellAmount) {
-            const txApprove = await sa.writeContract({
-              address: tIn.address as Address,
-              abi: erc20Abi,
-              functionName: 'approve',
-              args: [allowanceTarget, sellAmount],
-            })
-            await publicClient.waitForTransactionReceipt({ hash: txApprove as `0x${string}` })
-          }
-        }
-
-        // Submit swap transaction through the smart account (gasless)
-        // 0x returns { to, data, value } that should be sent by the taker
-        const to = quote.to as Address
-        const data = quote.data as `0x${string}`
-        const value = BigInt(quote.value || 0)
-
-        const txHash = await sa.sendTransaction({ to, data, value })
-        if (wait) await publicClient.waitForTransactionReceipt({ hash: txHash as `0x${string}` })
-        return { hash: txHash as string, details: { tokenInSymbol, tokenOutSymbol, amount, slippage, wait } }
-      } catch (e: any) {
-        throw new Error(`smartSwap failed: ${e?.message || e}`)
+      if (chain.id === 43113) {
+        throw new Error('Swap is not available on Avalanche Fuji in this app')
       }
+      if (chain.id !== 8453) {
+        throw new Error('Unsupported chain for swap')
+      }
+      // Base mainnet via 0x Swap API
+      const ZEROX_BASE_URL = 'https://base.api.0x.org/swap/v1/quote'
+      const tokenIn = resolveTokenBySymbol(opts.tokenInSymbol, 8453)
+      const tokenOut = resolveTokenBySymbol(opts.tokenOutSymbol, 8453)
+      if (!tokenIn || !tokenOut) throw new Error('Unsupported token symbol for Base')
+      const from = await getAddress()
+      const addrIn = tokenIn.address === 'ETH' ? 'ETH' : (tokenIn.address as string)
+      const addrOut = tokenOut.address === 'ETH' ? 'ETH' : (tokenOut.address as string)
+      const amountIn = parseUnits(opts.amount, tokenIn.decimals).toString()
+      const slippagePct = String((opts.slippage ?? 0.5) / 100) // 0.5% => 0.005
+      const url = new URL(ZEROX_BASE_URL)
+      url.searchParams.set('sellToken', addrIn)
+      url.searchParams.set('buyToken', addrOut)
+      url.searchParams.set('sellAmount', amountIn)
+      url.searchParams.set('takerAddress', from)
+      url.searchParams.set('slippagePercentage', slippagePct)
+      const res = await fetch(url.toString())
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(`0x quote failed (${res.status}): ${txt}`)
+      }
+      const quote = await res.json()
+      // Approve if ERC-20 sell token
+      if (tokenIn.address !== 'ETH' && quote.allowanceTarget) {
+        const sa = (agentkit as any)?.smartAccount
+        if (!sa) throw new Error('Smart account not available for approval')
+        const current = await publicClient.readContract({
+          address: tokenIn.address as any,
+          abi: erc20Abi,
+          functionName: 'allowance',
+          args: [from, quote.allowanceTarget as `0x${string}`]
+        }) as bigint
+        const needed = BigInt(quote.sellAmount)
+        if (current < needed) {
+          const txa = await sa.writeContract({
+            address: tokenIn.address as any,
+            abi: erc20Abi,
+            functionName: 'approve',
+            args: [quote.allowanceTarget as `0x${string}`, needed]
+          })
+          await publicClient.waitForTransactionReceipt({ hash: txa as `0x${string}` })
+        }
+      }
+      // Submit swap transaction
+      const sa = (agentkit as any)?.smartAccount
+      if (!sa) throw new Error('Smart account not available for swap')
+      const tx = await sa.sendTransaction({
+        to: quote.to as `0x${string}`,
+        data: quote.data as `0x${string}`,
+        value: quote.value ? BigInt(quote.value) : BigInt(0)
+      })
+      if (opts.wait) await publicClient.waitForTransactionReceipt({ hash: tx as `0x${string}` })
+      return { hash: tx as string, details: { chainId: chain.id, ...opts } }
+    }
+
+    function getChainInfo() {
+  const chainId = chain.id
+  const chainName = ({ 8453: 'Base', 43113: 'Avalanche Fuji' } as Record<number, string>)[chainId] || `Chain ${chainId}`
+  const nativeSymbol = (chainId === 43113) ? 'AVAX' : 'ETH'
+      return { chainId, chainName, nativeSymbol }
     }
 
     // New action functions for fetching data
@@ -516,9 +508,10 @@ async function buildAgent() {
         if (tokenAddress) {
           // For ERC-20 tokens, try to swap other tokens to get the required amount
           const availableTokens = await getPortfolioOverview()
-          const targetToken = resolveTokenBySymbol('USDC') // Default to USDC
+          const targetToken = resolveTokenBySymbol('USDC', chain.id) // Default to USDC
+          const nativeSentinel = chain.id === 43113 ? 'AVAX' : 'ETH'
           
-          if (targetToken && targetToken.address !== 'ETH') {
+          if (targetToken && targetToken.address !== nativeSentinel) {
             const targetBalance = await getBalance(targetToken.address as Address)
             if (parseFloat(targetBalance) > 0) {
               // Swap available tokens to required token
@@ -535,21 +528,22 @@ async function buildAgent() {
             }
           }
         } else {
-          // For ETH, try to swap other tokens to ETH
+          // For native, try to swap other tokens to native
           const portfolio = await getPortfolioOverview()
-          const nonEthAssets = portfolio.assets.filter((asset: any) => asset.symbol !== 'ETH' && asset.valueUSD > 5)
+          const nativeSym = chain.id === 43113 ? 'AVAX' : 'ETH'
+          const nonEthAssets = portfolio.assets.filter((asset: any) => asset.symbol !== nativeSym && asset.valueUSD > 5)
           
           if (nonEthAssets.length > 0) {
             const assetToSwap = nonEthAssets[0]
             const swapResult = await smartSwap({
               tokenInSymbol: assetToSwap.symbol,
-              tokenOutSymbol: 'ETH',
+              tokenOutSymbol: nativeSym,
               amount: assetToSwap.balance,
               slippage: 1.0,
               wait: true
             })
             
-            // Now try the ETH transfer again
+            // Now try the native transfer again
             return await smartTransfer({ amount, destination, wait })
           }
         }
@@ -659,7 +653,7 @@ async function buildAgent() {
   WRAPPEDBITCOIN: 'WBTC',
     }
 
-    async function getTokenPrice(symbol: string): Promise<any> {
+  async function getTokenPrice(symbol: string): Promise<any> {
       try {
         // Normalize query and support both symbols and common names
         const raw = symbol.trim()
@@ -670,13 +664,19 @@ async function buildAgent() {
         if (mappedFromName && mappedFromName !== sym) {
           return await getTokenPrice(mappedFromName)
         }
-        const token = resolveTokenBySymbol(sym)
-        // ETH price (with 24h change)
+        const token = resolveTokenBySymbol(sym, chain.id)
+        // AVAX price (with 24h change)
+        if (token && token.address === 'AVAX') {
+          const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=avalanche-2&vs_currencies=usd&include_24hr_change=true')
+          if (!res.ok) throw new Error(`Failed to fetch AVAX price: ${res.status}`)
+          const data = await res.json()
+          return { symbol: 'AVAX', price: data['avalanche-2'].usd, change24h: data['avalanche-2'].usd_24h_change }
+        }
         if (token && token.address === 'ETH') {
           const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true')
           if (!res.ok) throw new Error(`Failed to fetch ETH price: ${res.status}`)
           const data = await res.json()
-          return { symbol: 'ETH', price: data.ethereum.usd, change24h: data.ethereum.usd_24h_change }
+          return { symbol: 'ETH', price: data['ethereum'].usd, change24h: data['ethereum'].usd_24h_change }
         }
         // Known Base token with coingeckoId
         if (token && token.coingeckoId) {
@@ -718,7 +718,7 @@ async function buildAgent() {
       }
     }
 
-    async function getTransactionHistory(address?: Address): Promise<any[]> {
+  async function getTransactionHistory(address?: Address): Promise<any[]> {
       try {
         const targetAddress = address || await getAddress()
         const blockNumber = await publicClient.getBlockNumber()
@@ -760,16 +760,17 @@ async function buildAgent() {
 
   async function getPortfolioOverview(targetAddress?: Address): Promise<any> {
       try {
-    const address = targetAddress || await getAddress()
-    const ethBalance = await getBalance(undefined, address)
+  const address = targetAddress || await getAddress()
+  const nativeBalance = await getBalance(undefined, address)
         
-        // Get supported token balances
-  const supportedTokens = ['USDC', 'USDT', 'WETH', 'DAI', 'WBTC']
+    // Get supported token balances
+  const supportedTokens = chain.id === 8453 ? ['USDC', 'WETH'] : ['USDC', 'WAVAX']
         const tokenBalances = await Promise.all(
           supportedTokens.map(async (symbol) => {
             try {
-              const token = resolveTokenBySymbol(symbol)
-              if (token && token.address !== 'ETH') {
+      const token = resolveTokenBySymbol(symbol, chain.id)
+      const nativeSentinel = chain.id === 43113 ? 'AVAX' : 'ETH'
+      if (token && token.address !== nativeSentinel) {
                 const balance = await getBalance(token.address as Address, address)
                 const price = await getTokenPrice(symbol)
                 return {
@@ -786,15 +787,16 @@ async function buildAgent() {
           })
         )
 
-        const ethPrice = await getTokenPrice('ETH')
-        const totalValue = parseFloat(ethBalance) * ethPrice.price + 
+    const nativeSym = chain.id === 43113 ? 'AVAX' : 'ETH'
+    const nativePrice = await getTokenPrice(nativeSym)
+    const totalValue = parseFloat(nativeBalance) * nativePrice.price + 
           tokenBalances.filter(Boolean).reduce((sum, token) => sum + (token?.valueUSD || 0), 0)
 
         return {
           address,
           totalValueUSD: totalValue,
           assets: [
-            { symbol: 'ETH', balance: ethBalance, price: ethPrice.price, valueUSD: parseFloat(ethBalance) * ethPrice.price },
+    { symbol: nativeSym, balance: nativeBalance, price: nativePrice.price, valueUSD: parseFloat(nativeBalance) * nativePrice.price },
             ...tokenBalances.filter(Boolean)
           ]
         }
@@ -834,6 +836,7 @@ async function buildAgent() {
       getTransactionHistory,
   getPortfolioOverview, // (targetAddress?: Address)
       formatBalance,
+  getChainInfo,
     }
   } catch (e: any) {
     throw new Error(`buildAgent failed: ${e?.message || e}`)

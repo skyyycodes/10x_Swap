@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { MessageCircle, Send, Bot, X } from "lucide-react"
-import { useAccount } from "wagmi"
+import { useAccount, useChainId } from "wagmi"
 
 type Msg = { role: "user" | "assistant"; content: string }
 
@@ -20,6 +20,7 @@ export default function ChatBubble({ variant = "floating", align = "right" }: Ch
   const [showRules, setShowRules] = useState(true)
   const endRef = useRef<HTMLDivElement | null>(null)
   const { address } = useAccount()
+  const chainId = useChainId() || 43113
 
   const scrollToEnd = useCallback(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [])
   useEffect(() => { scrollToEnd() }, [messages, scrollToEnd])
@@ -52,9 +53,9 @@ export default function ChatBubble({ variant = "floating", align = "right" }: Ch
 
   const typing = loading
 
-  const CHAIN_ID = useMemo(() => Number(process.env.NEXT_PUBLIC_CHAIN_ID || "8453"), [])
-  const chainLabel = CHAIN_ID === 84532 ? "Base Sepolia" : "Base"
-  const explorerBase = CHAIN_ID === 84532 ? "https://sepolia.basescan.org" : "https://basescan.org"
+  const chainLabel = chainId === 8453 ? 'Base' : 'Avalanche Fuji'
+  const explorerBase = chainId === 8453 ? 'https://basescan.org' : 'https://testnet.snowtrace.io'
+  const nativeSymbol = chainId === 8453 ? 'ETH' : 'AVAX'
 
   const renderContent = (text: string) => {
     const re = /(0x[a-fA-F0-9]{64})|(0x[a-fA-F0-9]{40})/g
@@ -85,10 +86,10 @@ export default function ChatBubble({ variant = "floating", align = "right" }: Ch
 
   const presets: { label: string; prompt: string }[] = [
     { label: "My address", prompt: "what's my address?" },
-    { label: "ETH balance", prompt: "get my balances" },
+  { label: `${nativeSymbol} balance`, prompt: "get my balances" },
     { label: "USDC balance", prompt: "get my USDC balance" },
-    { label: "Swap", prompt: "swap 5 USDC to ETH" },
-    { label: "Transfer", prompt: "transfer 0.01 ETH to 0x0000000000000000000000000000000000000000" },
+    { label: "Swap", prompt: `swap 5 USDC to ${nativeSymbol}` },
+    { label: "Transfer", prompt: `transfer 0.01 ${nativeSymbol} to 0x0000000000000000000000000000000000000000` },
   ]
 
   const usePreset = (p: string, autoSend = true) => {
@@ -187,7 +188,10 @@ export default function ChatBubble({ variant = "floating", align = "right" }: Ch
                           <li>balance — e.g. get my balances | get my USDC balance | balance 0x... (ERC-20)</li>
                           <li>price — e.g. ETH/BTC/SOL or names like “solana”</li>
                           <li>gas price — current gas on the active network</li>
-                          <li>swap — e.g. swap 5 USDC to ETH (gasless on Base)</li>
+                          <li>
+                            swap — e.g. swap 5 USDC to {nativeSymbol}
+                            {chainId === 43113 ? ' (not available on Fuji in this app)' : ''}
+                          </li>
                           <li>transfer — e.g. transfer 0.01 ETH to 0x... (valid 0x address required)</li>
                         </ul>
                       </div>
@@ -203,7 +207,7 @@ export default function ChatBubble({ variant = "floating", align = "right" }: Ch
                         <div className="mb-1 font-medium text-slate-900 dark:text-slate-200">Important</div>
                         <ul className="list-disc space-y-1 pl-5">
                           <li>Transfers require a valid 0x address; symbols are 2–6 letters.</li>
-                          <li>Runs on Base (or Base Sepolia when configured).</li>
+                          <li>Runs on {chainLabel}.</li>
                           <li>Balances are shown to 4 decimals; small USD values may round to $0.01.</li>
                           <li>Powered by 0xGasless actions (GetAddress, GetBalance, SendTransaction, SmartSwap, GetTokenDetails).</li>
                           <li>Never share secrets or private keys.</li>

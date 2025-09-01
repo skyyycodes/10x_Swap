@@ -2,12 +2,16 @@
 import React, { useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { BookOpen, X } from "lucide-react"
-import { BASE_SYMBOL_TO_TOKEN } from "@/lib/tokens"
+import { FUJI_SYMBOL_TO_TOKEN, BASE_SYMBOL_TO_TOKEN } from "@/lib/tokens"
+import { useChainId } from "wagmi"
 
 export default function GuidelinesBubble() {
   const [open, setOpen] = useState(false)
-
-  const SUPPORTED = ["ETH", "WETH", "USDC", "USDT", "DAI", "WBTC"] as const
+  const chainId = useChainId() || 43113
+  const chainLabel = chainId === 8453 ? 'Base' : 'Avalanche Fuji'
+  const nativeSymbol = chainId === 8453 ? 'ETH' : 'AVAX'
+  const TOKENS = chainId === 8453 ? BASE_SYMBOL_TO_TOKEN : FUJI_SYMBOL_TO_TOKEN
+  const SUPPORTED: string[] = chainId === 8453 ? ["ETH", "WETH", "USDC"] : ["AVAX", "WAVAX", "USDC"]
 
   return (
     <div className="relative mx-auto">
@@ -47,15 +51,15 @@ export default function GuidelinesBubble() {
             <div className="space-y-4 text-sm">
               {/* Supported tokens */}
               <section>
-                <div className="font-semibold mb-1">Supported tokens (Base)</div>
+                <div className="font-semibold mb-1">Supported tokens ({chainLabel})</div>
                 <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-300">
                   {SUPPORTED.map((sym) => {
-                    const t = BASE_SYMBOL_TO_TOKEN[sym]
-                    const addr = t.address === "ETH" ? "native" : t.address
+                    const t = TOKENS[sym]
+                    const addr = t?.address === "AVAX" || t?.address === "ETH" ? "native" : t?.address
                     return (
                       <li key={sym} className="flex justify-between">
                         <span className="font-medium">{sym}</span>
-                        <span className="truncate">{addr}</span>
+                        <span className="truncate">{addr || '—'}</span>
                       </li>
                     )
                   })}
@@ -82,8 +86,8 @@ export default function GuidelinesBubble() {
                 <p className="text-xs text-slate-600 dark:text-slate-300">
                   The smart account function is shared across all users for now (may change in future).  
                   You see the same smart account because it is created with the server/agent key, not the connected wallet.  
-                  Ensure the smart account has sufficient value for swaps.  
-                  Another reason: 0xGasless may not support the current chain.
+                  Ensure the smart account has enough {nativeSymbol} for approvals when gasless isn’t available.  
+                  {chainId === 43113 ? '0xGasless support on Fuji may be limited.' : ''}
                 </p>
               </section>
 
