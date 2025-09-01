@@ -1,6 +1,6 @@
  import 'server-only'
 import { createPublicClient, createWalletClient, http, parseUnits, formatUnits, erc20Abi } from 'viem'
-import { avalancheFuji, base } from 'viem/chains'
+import { avalanche, avalancheFuji, base } from 'viem/chains'
 import type { Address, Chain } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { Agentkit } from '@0xgasless/agentkit'
@@ -14,28 +14,51 @@ function getEnv(name: string, required = true): string | undefined {
   return v
 }
 
-// Chain selection: default to Avalanche Fuji unless CHAIN_ID explicitly selects Base
+// Chain selection: default to Avalanche Fuji unless CHAIN_ID selects Base or Avalanche mainnet
 function getChain(): Chain {
   const id = Number(process.env.CHAIN_ID || 43113)
-  return id === 8453 ? base : avalancheFuji
+  if (id === 8453) return base
+  if (id === 43114) return avalanche
+  return avalancheFuji
 }
 
-// Cache the singleton promise so we initialize only once per server runtime
-let singleton: ReturnType<typeof buildAgent> | null = null
+// Cache per-chain agent instances
+const agentInstances = new Map<number, ReturnType<typeof buildAgent>>()
 
-async function buildAgent() {
+async function buildAgent(chainIdOverride?: number) {
   try {
   // Normalize envs
   const PK_RAW = getEnv('PRIVATE_KEY') as string
   const PRIVATE_KEY = (PK_RAW.startsWith('0x') ? PK_RAW : `0x${PK_RAW}`) as `0x${string}`
-  const RPC_RAW = getEnv('RPC_URL') as string
-  const RPC_URL = (RPC_RAW.startsWith('http://') || RPC_RAW.startsWith('https://')) ? RPC_RAW : `https://${RPC_RAW}`
   // Dynamic runtime; defaults to Fuji if CHAIN_ID not provided
-  const CHAIN_ID = Number(process.env.CHAIN_ID || 43113)
-    const GASLESS_API_KEY = getEnv('GASLESS_API_KEY') as string
-    const GASLESS_PAYMASTER_URL = getEnv('GASLESS_PAYMASTER_URL') as string
+  const CHAIN_ID = Number((chainIdOverride ?? process.env.CHAIN_ID) || 43113)
+  const chain = CHAIN_ID === 8453 ? base : (CHAIN_ID === 43114 ? avalanche : avalancheFuji)
 
-  const chain = CHAIN_ID === 8453 ? base : avalancheFuji
+  // Chain-specific RPCs
+  const rpcByChain: Record<number, string | undefined> = {
+    8453: process.env.RPC_URL_BASE,
+    43113: process.env.RPC_URL_FUJI,
+    43114: process.env.RPC_URL_AVALANCHE,
+  }
+  const RPC_RAW = rpcByChain[CHAIN_ID] || process.env.RPC_URL
+  if (!RPC_RAW) throw new Error('Missing RPC_URL for selected chain. Provide RPC_URL_BASE, RPC_URL_FUJI, or RPC_URL_AVALANCHE.')
+  const RPC_URL = (RPC_RAW.startsWith('http://') || RPC_RAW.startsWith('https://')) ? RPC_RAW : `https://${RPC_RAW}`
+
+  // Chain-specific GASLESS API key and paymaster
+  const apiKeyByChain: Record<number, string | undefined> = {
+    8453: process.env.GASLESS_API_KEY_BASE || process.env.GASLESS_API_KEY,
+    43113: process.env.GASLESS_API_KEY_FUJI || process.env.GASLESS_API_KEY,
+    43114: process.env.GASLESS_API_KEY_AVALANCHE || process.env.GASLESS_API_KEY,
+  }
+  const GASLESS_API_KEY = apiKeyByChain[CHAIN_ID]
+  if (!GASLESS_API_KEY) throw new Error('Missing GASLESS_API_KEY for selected chain. Provide GASLESS_API_KEY_{BASE|FUJI|AVALANCHE} or GASLESS_API_KEY.')
+
+  const paymasterByChain: Record<number, string | undefined> = {
+    8453: process.env.GASLESS_PAYMASTER_URL_BASE || process.env.GASLESS_PAYMASTER_URL,
+    43113: process.env.GASLESS_PAYMASTER_URL_FUJI || process.env.GASLESS_PAYMASTER_URL,
+    43114: process.env.GASLESS_PAYMASTER_URL_AVALANCHE || process.env.GASLESS_PAYMASTER_URL,
+  }
+  const GASLESS_PAYMASTER_URL = paymasterByChain[CHAIN_ID]
 
     // Quick sanity checks for common RPC mistakes (e.g., missing Infura/Alchemy project path)
     const lowerUrl = RPC_URL.toLowerCase()
@@ -71,7 +94,7 @@ async function buildAgent() {
     try {
       const rpcChainId = await publicClient.getChainId()
     if (rpcChainId !== chain.id) {
-  const name = chain.id === 8453 ? 'Base' : 'Avalanche Fuji'
+  const name = chain.id === 8453 ? 'Base' : chain.id === 43114 ? 'Avalanche' : 'Avalanche Fuji'
         throw new Error(
           `RPC chainId ${rpcChainId} does not match expected ${chain.id} (${name}). ` +
           `Check CHAIN_ID and RPC_URL.`
@@ -237,25 +260,26 @@ async function buildAgent() {
       }
     }
 
-    // Swap is chain-aware. Enabled on Base (via 0x); disabled on Fuji.
+    // Swap is chain-aware. Enabled on Base and Avalanche mainnet (via 0x); disabled on Fuji.
     async function smartSwap(opts: { tokenInSymbol: string; tokenOutSymbol: string; amount: string; slippage?: number; wait?: boolean }): Promise<{ hash: string; details: any }> {
       if (chain.id === 43113) {
         throw new Error('Swap is not available on Avalanche Fuji in this app')
       }
-      if (chain.id !== 8453) {
-        throw new Error('Unsupported chain for swap')
-      }
-      // Base mainnet via 0x Swap API
-      const ZEROX_BASE_URL = 'https://base.api.0x.org/swap/v1/quote'
-      const tokenIn = resolveTokenBySymbol(opts.tokenInSymbol, 8453)
-      const tokenOut = resolveTokenBySymbol(opts.tokenOutSymbol, 8453)
-      if (!tokenIn || !tokenOut) throw new Error('Unsupported token symbol for Base')
+      const isBase = chain.id === 8453
+      const isAvax = chain.id === 43114
+      if (!isBase && !isAvax) throw new Error('Unsupported chain for swap')
+
+      const ZEROX_URL = isBase ? 'https://base.api.0x.org/swap/v1/quote' : 'https://avalanche.api.0x.org/swap/v1/quote'
+      const tokenIn = resolveTokenBySymbol(opts.tokenInSymbol, chain.id)
+      const tokenOut = resolveTokenBySymbol(opts.tokenOutSymbol, chain.id)
+      if (!tokenIn || !tokenOut) throw new Error(`Unsupported token symbol for ${isBase ? 'Base' : 'Avalanche'}`)
       const from = await getAddress()
-      const addrIn = tokenIn.address === 'ETH' ? 'ETH' : (tokenIn.address as string)
-      const addrOut = tokenOut.address === 'ETH' ? 'ETH' : (tokenOut.address as string)
+      const nativeIn = isBase ? 'ETH' : 'AVAX'
+      const addrIn = tokenIn.address === nativeIn ? nativeIn : (tokenIn.address as string)
+      const addrOut = tokenOut.address === nativeIn ? nativeIn : (tokenOut.address as string)
       const amountIn = parseUnits(opts.amount, tokenIn.decimals).toString()
       const slippagePct = String((opts.slippage ?? 0.5) / 100) // 0.5% => 0.005
-      const url = new URL(ZEROX_BASE_URL)
+      const url = new URL(ZEROX_URL)
       url.searchParams.set('sellToken', addrIn)
       url.searchParams.set('buyToken', addrOut)
       url.searchParams.set('sellAmount', amountIn)
@@ -268,7 +292,7 @@ async function buildAgent() {
       }
       const quote = await res.json()
       // Approve if ERC-20 sell token
-      if (tokenIn.address !== 'ETH' && quote.allowanceTarget) {
+      if (tokenIn.address !== nativeIn && quote.allowanceTarget) {
         const sa = (agentkit as any)?.smartAccount
         if (!sa) throw new Error('Smart account not available for approval')
         const current = await publicClient.readContract({
@@ -302,8 +326,8 @@ async function buildAgent() {
 
     function getChainInfo() {
   const chainId = chain.id
-  const chainName = ({ 8453: 'Base', 43113: 'Avalanche Fuji' } as Record<number, string>)[chainId] || `Chain ${chainId}`
-  const nativeSymbol = (chainId === 43113) ? 'AVAX' : 'ETH'
+  const chainName = ({ 8453: 'Base', 43113: 'Avalanche Fuji', 43114: 'Avalanche' } as Record<number, string>)[chainId] || `Chain ${chainId}`
+  const nativeSymbol = (chainId === 43113 || chainId === 43114) ? 'AVAX' : 'ETH'
       return { chainId, chainName, nativeSymbol }
     }
 
@@ -843,9 +867,10 @@ async function buildAgent() {
   }
 }
 
-export async function getAgent() {
-  if (!singleton) singleton = buildAgent()
-  return singleton
+export async function getAgent(chainIdOverride?: number) {
+  const id = Number((chainIdOverride ?? process.env.CHAIN_ID) || 43113)
+  if (!agentInstances.has(id)) agentInstances.set(id, buildAgent(id))
+  return agentInstances.get(id)!
 }
 
 export type Agent = Awaited<ReturnType<typeof buildAgent>>

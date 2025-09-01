@@ -47,12 +47,13 @@ function getLLM() {
 
 export async function POST(req: Request) {
   try {
-  const body = await req.json().catch(() => ({})) as { prompt?: string; messages?: ClientMessage[]; threadId?: string; walletAddress?: string }
+  const body = await req.json().catch(() => ({})) as { prompt?: string; messages?: ClientMessage[]; threadId?: string; walletAddress?: string; chainId?: number }
     const prompt = (body.prompt && typeof body.prompt === "string") ? body.prompt : undefined
     const incoming = Array.isArray(body.messages) ? body.messages : (prompt ? [{ role: "user", content: prompt }] as ClientMessage[] : [])
     if (!incoming.length) return NextResponse.json({ ok: false, error: "No prompt or messages provided" }, { status: 400 })
 
-  const { agentkit, getAddress, getBalance, smartTransfer, smartSwap } = await getAgent()
+  const chainOverride = typeof body.chainId === 'number' ? body.chainId : undefined
+  const { agentkit, getAddress, getBalance, smartTransfer, smartSwap } = await getAgent(chainOverride)
     const toolkit = new AgentkitToolkit(agentkit as any)
     const tools = toolkit.getTools()
 
@@ -89,8 +90,8 @@ export async function POST(req: Request) {
       if (!text) return null
 
       // Helper: decide which address to use based on phrasing
-  const resolveAddressContext = async () => {
-        const { getAddresses } = await getAgent()
+      const resolveAddressContext = async () => {
+        const { getAddresses } = await getAgent(chainOverride)
         const { smart, eoa } = await getAddresses()
         const clientEOA = (body.walletAddress && /^0x[a-fA-F0-9]{40}$/.test(body.walletAddress)) ? body.walletAddress : undefined
 
@@ -121,7 +122,7 @@ export async function POST(req: Request) {
 
       // Address
       if (/\b(address|wallet)\b/.test(text)) {
-        const { getAddresses } = await getAgent()
+  const { getAddresses } = await getAgent(chainOverride)
         const { smart, eoa } = await getAddresses()
         const clientEOA = (body.walletAddress && /^0x[a-fA-F0-9]{40}$/.test(body.walletAddress)) ? body.walletAddress : undefined
         return [
@@ -152,7 +153,7 @@ export async function POST(req: Request) {
         // Try symbol
         const symMatch = lastUser!.content.match(/\b([A-Z]{2,6})\b/)
         if (symMatch) {
-          const { getChainInfo } = await getAgent()
+          const { getChainInfo } = await getAgent(chainOverride)
           const info = await getChainInfo()
           const token = resolveTokenBySymbol(symMatch[1], info.chainId)
           if (token && token.address !== 'ETH' && token.address !== 'AVAX') {
@@ -170,16 +171,16 @@ export async function POST(req: Request) {
         }
         const ethBal = await getBalance(undefined, addrCtx.target as any)
         try {
-          const { getTokenPrice } = await getAgent()
+          const { getTokenPrice } = await getAgent(chainOverride)
           // Decide native symbol based on chain
-          const { getChainInfo } = await getAgent()
+          const { getChainInfo } = await getAgent(chainOverride)
           const info = await getChainInfo()
           const nativeSym = info.nativeSymbol
           const priceData = await getTokenPrice(nativeSym)
           const usd = parseFloat(ethBal) * (priceData?.price || 0)
           return `${nativeSym}: ${parseFloat(ethBal).toFixed(4)} ($${fmtUSD(usd)})`
         } catch {
-          const { getChainInfo } = await getAgent()
+          const { getChainInfo } = await getAgent(chainOverride)
           const info = await getChainInfo()
           const nativeSym = info.nativeSymbol
           return `${nativeSym}: ${parseFloat(ethBal).toFixed(4)}`
@@ -188,7 +189,7 @@ export async function POST(req: Request) {
 
       // Market data and prices
     if (/\b(price|prices?|market|market data|top|tokens?)\b/.test(text)) {
-        const { getTokenPrice, getMarketData } = await getAgent()
+  const { getTokenPrice, getMarketData } = await getAgent(chainOverride)
         
         // Check for specific token (case-insensitive, e.g., "price of eth")
         const symMatch = (lastUser!.content || '').match(/(?:price(?:\s+of)?\s+)?([a-z0-9]{2,10})/i)
@@ -223,7 +224,7 @@ export async function POST(req: Request) {
       // Gas estimates
       if (/\b(gas|gas price|gas estimate|fees?)\b/.test(text)) {
         try {
-          const { getGasEstimate } = await getAgent()
+          const { getGasEstimate } = await getAgent(chainOverride)
           const gasData = await getGasEstimate()
           return `Current gas price: ${gasData.gasPrice} Gwei\nBase fee: ${gasData.baseFee} Gwei\nChain: ${gasData.chain} (${gasData.chainId})`
         } catch (e) {
@@ -234,7 +235,7 @@ export async function POST(req: Request) {
       // Portfolio overview
       if (/\b(portfolio|portfolio overview|total value|net worth)\b/.test(text)) {
         try {
-          const { getPortfolioOverview } = await getAgent()
+          const { getPortfolioOverview } = await getAgent(chainOverride)
           const addrCtx = await resolveAddressContext()
           if (addrCtx.missing) {
             return 'No connected wallet detected. Connect your wallet to query the Connected EOA portfolio.'
@@ -259,12 +260,12 @@ export async function POST(req: Request) {
       // Transaction history
       if (/\b(transactions?|history|recent|tx)\b/.test(text)) {
         try {
-          const { getTransactionHistory } = await getAgent()
+          const { getTransactionHistory } = await getAgent(chainOverride)
           const txs = await getTransactionHistory()
           if (txs.length === 0) {
             return "No recent transactions found."
           }
-            const { getChainInfo } = await getAgent()
+            const { getChainInfo } = await getAgent(chainOverride)
             const info = await getChainInfo()
             const nativeSym = info.nativeSymbol
             const recent = txs.slice(0, 3).map((tx: any) => 
@@ -284,7 +285,7 @@ export async function POST(req: Request) {
         const symbol = tr[2]
         const to = tr[3] as `0x${string}`
         if (symbol) {
-          const { getChainInfo } = await getAgent()
+    const { getChainInfo } = await getAgent(chainOverride)
           const info = await getChainInfo()
           const token = resolveTokenBySymbol(symbol, info.chainId)
           if (!token) return `Unknown token symbol: ${symbol}`
