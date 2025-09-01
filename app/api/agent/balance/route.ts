@@ -12,9 +12,12 @@ export const runtime = "nodejs";
 // GET: optionally accepts ?symbols=ETH,USDC,WBTC,AVAX
 export async function GET(req: Request) {
   try {
-    const requested = parseSymbolsFromReq(req);
+  const requested = parseSymbolsFromReq(req);
     const symbols = requested.length ? requested : ['ETH', 'USDC', 'WBTC', 'AVAX'];
     const baseSymbols = symbols.filter((s) => s.toUpperCase() !== 'AVAX');
+  // optional explicit address (use connected wallet EOA)
+  const url = new URL(req.url);
+  const explicitAddress = url.searchParams.get('address') || undefined;
 
     const { agentkit } = await getAgent();
     const toolkit = new AgentkitToolkit(agentkit as any);
@@ -43,11 +46,11 @@ export async function GET(req: Request) {
     } catch (e: any) { toolResults.avaxBalances = String(e?.message||e); }
 
     // Fallback structured balances from our local logic (also return which address was used)
-    const baseResult = await getBaseBalances(baseSymbols);
+  const baseResult = await getBaseBalances(baseSymbols, explicitAddress);
     // Ensure AVAX native balance is included when requested. Prefer the toolkit result but always add our reliable native read as an item
     if (avaxRequested) {
       try {
-        avaxItem = await getAvalancheNativeBalance();
+        avaxItem = await getAvalancheNativeBalance(explicitAddress);
       } catch (e: any) {
         console.warn('Failed to read AVAX native balance fallback:', e?.message || e)
         avaxItem = null
@@ -55,9 +58,9 @@ export async function GET(req: Request) {
     }
     // If AVAX was requested, also include common Avalanche ERC-20 balances (WAVAX, USDC) using a chain-specific agent
     let avaxTokenItems: BalanceItem[] = []
-    if (avaxRequested) {
+  if (avaxRequested) {
       try {
-        avaxTokenItems = await getAvalancheERC20Balances(symbols);
+    avaxTokenItems = await getAvalancheERC20Balances(symbols, explicitAddress);
       } catch (e: any) {
         console.warn('Failed to read Avalanche ERC-20 balances:', e?.message || e)
         avaxTokenItems = []
@@ -86,10 +89,11 @@ export async function POST(req: Request) {
       : [];
     const symbols = requested.length ? requested : ["ETH", "USDC", "WBTC", "AVAX"];
     const baseSymbols = symbols.filter((s) => s.toUpperCase() !== 'AVAX');
+  const explicitAddress = typeof body.address === 'string' && body.address ? body.address : undefined;
 
-    const baseResult = await getBaseBalances(baseSymbols);
-    const avaxRequested = symbols.some((s) => s.toUpperCase() === 'AVAX');
-    const avaxItem = avaxRequested ? await getAvalancheNativeBalance() : null;
+  const baseResult = await getBaseBalances(baseSymbols, explicitAddress);
+  const avaxRequested = symbols.some((s) => s.toUpperCase() === 'AVAX');
+  const avaxItem = avaxRequested ? await getAvalancheNativeBalance(explicitAddress) : null;
 
     const items = [...baseResult.items, ...(avaxItem ? [avaxItem] : [])];
     const lines = [
@@ -149,8 +153,27 @@ function formatTo4(amount: string): string {
   }
 }
 
-async function getBaseBalances(symbols: string[]): Promise<{ items: BalanceItem[]; address: string; isSmart: boolean }> {
+async function getBaseBalances(symbols: string[], explicitAddress?: string): Promise<{ items: BalanceItem[]; address: string; isSmart: boolean }> {
   const { getSmartAddressOrNull, getEOAAddress, getBalance } = await getAgent();
+  // If caller provided an explicit address (connected wallet), use it directly
+  if (explicitAddress) {
+    const out: BalanceItem[] = [];
+    for (const symRaw of symbols) {
+      const sym = symRaw.toUpperCase();
+      const token = resolveTokenBySymbol(sym, 8453);
+      if (!token) continue;
+      let amtRaw = '0'
+      try {
+        amtRaw = await getBalance(token.address === 'ETH' ? undefined : (token.address as any), explicitAddress as any)
+      } catch (err: any) {
+        console.warn(`Failed to read balance for ${sym} (${token.address}) for explicit address ${explicitAddress}: ${String(err?.message||err)}`)
+        amtRaw = '0'
+      }
+      out.push({ symbol: sym, amount: formatTo4(amtRaw), network: 'base' });
+    }
+    return { items: out, address: explicitAddress, isSmart: false };
+  }
+
   const smartAddr = await getSmartAddressOrNull();
   const eoaAddr = await getEOAAddress();
   const addr = smartAddr || eoaAddr;
@@ -164,7 +187,7 @@ async function getBaseBalances(symbols: string[]): Promise<{ items: BalanceItem[
     }
     let amtRaw = '0'
     try {
-      amtRaw = await getBalance(token.address === 'ETH' ? undefined : (token.address as any))
+      amtRaw = await getBalance(token.address === 'ETH' ? undefined : (token.address as any), addr as any)
     } catch (err: any) {
       console.warn(`Failed to read balance for ${sym} (${token.address}): ${String(err?.message||err)}`)
       amtRaw = '0'
@@ -174,19 +197,29 @@ async function getBaseBalances(symbols: string[]): Promise<{ items: BalanceItem[
   return { items: out, address: addr, isSmart };
 }
 
-async function getAvalancheNativeBalance(): Promise<BalanceItem | null> {
-  // Read-only AVAX (native) balance using EOA address derived from PRIVATE_KEY
-  const pk = process.env.PRIVATE_KEY as string | undefined;
-  if (!pk) return null;
-  const PRIVATE_KEY = (pk.startsWith('0x') ? pk : `0x${pk}`) as `0x${string}`;
-  const account = privateKeyToAccount(PRIVATE_KEY);
-  const client = createPublicClient({ chain: avalanche, transport: http('https://api.avax.network/ext/bc/C/rpc') });
-  const bal = await client.getBalance({ address: account.address });
-  return { symbol: 'AVAX', amount: formatTo4(formatUnits(bal, 18)), network: 'avalanche' };
+async function getAvalancheNativeBalance(explicitAddress?: string): Promise<BalanceItem | null> {
+  try {
+    if (explicitAddress) {
+      const client = createPublicClient({ chain: avalanche, transport: http('https://api.avax.network/ext/bc/C/rpc') });
+      const bal = await client.getBalance({ address: explicitAddress });
+      return { symbol: 'AVAX', amount: formatTo4(formatUnits(bal, 18)), network: 'avalanche' };
+    }
+    // Read-only AVAX (native) balance using EOA address derived from PRIVATE_KEY
+    const pk = process.env.PRIVATE_KEY as string | undefined;
+    if (!pk) return null;
+    const PRIVATE_KEY = (pk.startsWith('0x') ? pk : `0x${pk}`) as `0x${string}`;
+    const account = privateKeyToAccount(PRIVATE_KEY);
+    const client = createPublicClient({ chain: avalanche, transport: http('https://api.avax.network/ext/bc/C/rpc') });
+    const bal = await client.getBalance({ address: account.address });
+    return { symbol: 'AVAX', amount: formatTo4(formatUnits(bal, 18)), network: 'avalanche' };
+  } catch (e: any) {
+    console.warn('getAvalancheNativeBalance failed:', e?.message || e)
+    return null
+  }
 }
 
 // Read common Avalanche ERC-20 balances (WAVAX, USDC) using a chain-specific agent
-async function getAvalancheERC20Balances(requestedSymbols: string[]): Promise<BalanceItem[]> {
+async function getAvalancheERC20Balances(requestedSymbols: string[], explicitAddress?: string): Promise<BalanceItem[]> {
   const want = requestedSymbols.map(s => s.toUpperCase())
   const common = ['WAVAX', 'USDC']
   const pick = common.filter((s) => want.includes(s))
@@ -195,9 +228,14 @@ async function getAvalancheERC20Balances(requestedSymbols: string[]): Promise<Ba
   try {
     const agent = await (getAgent as any)(43114) as Agent
     const { getBalance, getEOAAddress, getSmartAddressOrNull } = agent
-    const smart = await getSmartAddressOrNull()
-    const eoa = await getEOAAddress()
-    const addr = smart || eoa
+    let addr: string | undefined = undefined
+    if (explicitAddress) {
+      addr = explicitAddress
+    } else {
+      const smart = await getSmartAddressOrNull()
+      const eoa = await getEOAAddress()
+      addr = smart || eoa
+    }
     for (const sym of pick) {
       const token = resolveTokenBySymbol(sym, 43114)
       if (!token) continue
