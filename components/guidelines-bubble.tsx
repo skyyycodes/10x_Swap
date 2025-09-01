@@ -11,7 +11,8 @@ export default function GuidelinesBubble() {
   const chainLabel = chainId === 8453 ? 'Base' : (chainId === 43114 ? 'Avalanche' : 'Avalanche Fuji')
   const nativeSymbol = (chainId === 43113 || chainId === 43114) ? 'AVAX' : 'ETH'
   const TOKENS = chainId === 8453 ? BASE_SYMBOL_TO_TOKEN : (chainId === 43114 ? AVALANCHE_SYMBOL_TO_TOKEN : FUJI_SYMBOL_TO_TOKEN)
-  const SUPPORTED: string[] = chainId === 8453 ? ["ETH", "WETH", "USDC"] : ["AVAX", "WAVAX", "USDC"]
+  // Dynamically list all known tokens for the selected chain
+  const SUPPORTED: string[] = Object.keys(TOKENS || {})
 
   return (
     <div className="relative mx-auto">

@@ -121,23 +121,39 @@ async function buildAgent(chainIdOverride?: number) {
 
     // Helpers
     async function getAddress(): Promise<Address> {
-      try {
-        // Prefer the smart account address from Agentkit if available
-        const sa = (agentkit as any)?.smartAccount
-        if (sa && typeof sa.getAddress === 'function') {
+      // Prefer the smart account address from Agentkit if available.
+      // However, some Agentkit/contract setups may fail when resolving a counterfactual
+      // address (see errors about getAddressForCounterFactualAccount). In that case,
+      // we should fall back gracefully to other address sources (agentkit helper or
+      // the EOA) so read-only operations like balance checks still work.
+      const sa = (agentkit as any)?.smartAccount
+      if (sa && typeof sa.getAddress === 'function') {
+        try {
           const addr = await sa.getAddress()
           return addr as Address
+        } catch (e: any) {
+          // Do not throw here — surface a clear warning and continue to fallbacks.
+          console.warn(
+            `smartAccount.getAddress() failed: ${String(e?.message || e)}. ` +
+            `This often indicates the account factory / module setup contract is missing or the RPC/chain config is incorrect. ` +
+            `Falling back to other address sources (agentkit helper or EOA).`
+          )
         }
-        // Fallback to Agentkit helper if exposed
-        if ((agentkit as any)?.getAddress) {
+      }
+
+      // Fallback to Agentkit helper if exposed
+      if ((agentkit as any)?.getAddress) {
+        try {
           const addr = await (agentkit as any).getAddress()
           return addr as Address
+        } catch (e: any) {
+          console.warn(`agentkit.getAddress() failed: ${String(e?.message || e)}. Falling back to EOA.`)
         }
-        // Last resort: EOA address (not gasless)
-        return account.address as Address
-      } catch (e: any) {
-        throw new Error(`getAddress failed: ${e?.message || e}`)
       }
+
+      // Last resort: return the EOA address (not gasless) so read-only flows still work.
+      console.info(`Using EOA address as fallback: ${account.address}`)
+      return account.address as Address
     }
 
     // Explicitly expose the EOA address (your MetaMask/private key address)
@@ -154,6 +170,42 @@ async function buildAgent(chainIdOverride?: number) {
       const smart = await getAddress()
       const eoa = await getEOAAddress()
       return { smart, eoa }
+    }
+
+    // Return smart account address if it's the real smart account (not the EOA fallback).
+    // If smart account resolution failed and we fell back to EOA, return null to make
+    // intent explicit to callers.
+    async function getSmartAddressOrNull(): Promise<Address | null> {
+      try {
+        const sa = (agentkit as any)?.smartAccount
+        if (sa && typeof sa.getAddress === 'function') {
+          try {
+            const addr = await sa.getAddress()
+            // If addr equals the EOA, treat it as not-available
+            if (addr && addr.toLowerCase() === account.address.toLowerCase()) return null
+            return addr as Address
+          } catch {
+            // fallback: try agentkit.getAddress
+          }
+        }
+        if ((agentkit as any)?.getAddress) {
+          try {
+            const addr = await (agentkit as any).getAddress()
+            if (addr && addr.toLowerCase() === account.address.toLowerCase()) return null
+            return addr as Address
+          } catch {
+            return null
+          }
+        }
+        return null
+      } catch {
+        return null
+      }
+    }
+
+    async function isSmartAccountAvailable(): Promise<boolean> {
+      const addr = await getSmartAddressOrNull()
+      return !!addr
     }
 
   async function getBalance(tokenAddress?: Address, targetAddress?: Address): Promise<string> {
@@ -861,6 +913,9 @@ async function buildAgent(chainIdOverride?: number) {
   getPortfolioOverview, // (targetAddress?: Address)
       formatBalance,
   getChainInfo,
+  // New helpers
+  getSmartAddressOrNull,
+  isSmartAccountAvailable,
     }
   } catch (e: any) {
     throw new Error(`buildAgent failed: ${e?.message || e}`)
