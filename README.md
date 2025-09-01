@@ -258,6 +258,36 @@ Here is a detailed map of triggers and actions:
 - **Priority**: `fast transfer 1 USDC to 0x...` (options: `fast`, `cheap`, `urgent`, `economy`)
 - **Smart (Auto-Swap)**: `smart transfer 5 USDC to 0x...` (swaps other assets if balance is too low)
 - **Batch**: `batch transfer 1 USDC to 0xA and 0.5 ETH to 0xB`
+
+## 📦 Supported tokens
+
+This project maintains a small registry of supported tokens per chain in `lib/tokens.ts`. The UI and backend expect these symbols when requesting balances or swaps.
+
+Base mainnet (8453)
+
+| Symbol | Address |
+|--------|---------|
+| ETH    | native  |
+| WETH   | 0x4200000000000000000000000000000000000006 |
+| USDC   | 0x833589fCD6EDb6E08f4c7C10d6D3e96cF6a47b8f |
+
+Avalanche mainnet (43114)
+
+| Symbol | Address |
+|--------|---------|
+| AVAX   | native  |
+| WAVAX  | 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7 |
+| USDC   | 0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E |
+
+Fuji testnet (43113)
+
+| Symbol | Address |
+|--------|---------|
+| AVAX   | native  |
+| WAVAX  | 0xd00ae08403B9bbb9124bb305C09058E32C39A48c |
+| USDC   | 0x5425890298aed601595a70AB815c96711a31Bc65 |
+
+If you need additional tokens supported, add them to `lib/tokens.ts` and the UI will pick them up automatically.
 - **Scheduled**: `schedule transfer 2 USDC to 0x... for tomorrow at 2pm`
 
 #### 🔁 Swap (gasless, from Smart Account)
