@@ -1,50 +1,38 @@
 import type { Address } from 'viem'
 
-// Minimal Base token registry and helper resolvers.
-// Extend safely as we add more supported targets.
+// Minimal token registry and helpers for Avalanche Fuji (43113) and Base mainnet (8453).
 
 export type TokenInfo = {
   symbol: string
-  address: Address | 'ETH' // Use 'ETH' sentinel for native
+  address: Address | 'AVAX' | 'ETH' // Use sentinels for native coins
   decimals: number
   coingeckoId?: string
 }
 
-// Common Base mainnet tokens
+// Fuji common tokens (43113)
+export const FUJI_SYMBOL_TO_TOKEN: Record<string, TokenInfo> = {
+  AVAX: { symbol: 'AVAX', address: 'AVAX', decimals: 18, coingeckoId: 'avalanche-2' },
+  WAVAX: { symbol: 'WAVAX', address: '0xd00ae08403B9bbb9124bb305C09058E32C39A48c', decimals: 18, coingeckoId: 'avalanche-2' },
+  // USDC.e test token on Fuji (commonly used in docs)
+  USDC: { symbol: 'USDC', address: '0x5425890298aed601595a70AB815c96711a31Bc65', decimals: 6, coingeckoId: 'usd-coin' },
+}
+
+// Base mainnet common tokens (8453)
 export const BASE_SYMBOL_TO_TOKEN: Record<string, TokenInfo> = {
-  ETH: { symbol: 'ETH', address: 'ETH', decimals: 18 },
-  WETH: { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006', decimals: 18 },
-  USDC: { symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6, coingeckoId: 'usd-coin' },
-  // Tether USD (USDT) on Base Sepolia (user-provided)
-  USDT: { symbol: 'USDT', address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', decimals: 6, coingeckoId: 'tether' },
-  DAI: { symbol: 'DAI', address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb', decimals: 18, coingeckoId: 'dai' },
-  // Wrapped Bitcoin on Base (8 decimals)
-  WBTC: { symbol: 'WBTC', address: '0x0555e30da8f98308edb960aa94c0db47230d2b9c', decimals: 8, coingeckoId: 'wrapped-bitcoin' },
-  // Common typo/alias mapped to WBTC
-  WBTS: { symbol: 'WBTC', address: '0x0555e30da8f98308edb960aa94c0db47230d2b9c', decimals: 8, coingeckoId: 'wrapped-bitcoin' },
-  // USDbC (old bridged USDC) left out intentionally
+  ETH: { symbol: 'ETH', address: 'ETH', decimals: 18, coingeckoId: 'ethereum' },
+  WETH: { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006', decimals: 18, coingeckoId: 'weth' },
+  USDC: { symbol: 'USDC', address: '0x833589fCD6EDb6E08f4c7C10d6D3e96cF6a47b8f', decimals: 6, coingeckoId: 'usd-coin' },
 }
 
-// Known Coinranking uuids (used by our UI) mapped to Base symbols
-// Add more as we curate supported on-Base assets.
-export const COINRANKING_UUID_TO_SYMBOL: Record<string, string> = {
-  // Ethereum
-  razxDUgYGNAdQ: 'ETH',
-  // USD Coin
-  HIVsRcGKkPFtW: 'USDC',
-  // Tether USD
-  aKzUVe4Hh_CON: 'USDT',
-}
-
-export function resolveTokenBySymbol(symbol?: string): TokenInfo | null {
+export function resolveTokenBySymbol(symbol?: string, chainId?: number): TokenInfo | null {
   if (!symbol) return null
   const key = symbol.toUpperCase()
-  return BASE_SYMBOL_TO_TOKEN[key] ?? null
+  if (chainId === 8453) return BASE_SYMBOL_TO_TOKEN[key] ?? null
+  // Default to Fuji if chainId not provided
+  return FUJI_SYMBOL_TO_TOKEN[key] ?? null
 }
 
 export function resolveTokenByCoinrankingId(coinId?: string): TokenInfo | null {
-  if (!coinId) return null
-  const sym = COINRANKING_UUID_TO_SYMBOL[coinId]
-  if (!sym) return null
-  return resolveTokenBySymbol(sym)
+  // Not used in this build, but keep API stable
+  return null
 }

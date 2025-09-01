@@ -83,13 +83,13 @@ export async function POST(req: Request) {
 
     // Execute agent and collect the final response
     // Helper: simple intent fallback for common actions
-    const fallback = async (): Promise<string | null> => {
+  const fallback = async (): Promise<string | null> => {
       const lastUser = [...incoming].reverse().find((m) => m.role === "user")
       const text = (lastUser?.content || "").toLowerCase()
       if (!text) return null
 
       // Helper: decide which address to use based on phrasing
-      const resolveAddressContext = async () => {
+  const resolveAddressContext = async () => {
         const { getAddresses } = await getAgent()
         const { smart, eoa } = await getAddresses()
         const clientEOA = (body.walletAddress && /^0x[a-fA-F0-9]{40}$/.test(body.walletAddress)) ? body.walletAddress : undefined
@@ -112,7 +112,10 @@ export async function POST(req: Request) {
           // Prefer client EOA when unspecified, else server EOA
           return { target: clientEOA || eoa, label: clientEOA ? 'Connected EOA' : 'Server EOA', missing: !clientEOA && false }
         }
-        // Default to smart account
+        // Default: prefer Connected EOA if provided (read-only friendly), else smart account
+        if (clientEOA) {
+          return { target: clientEOA, label: 'Connected EOA', missing: false }
+        }
         return { target: smart, label: 'Smart Account', missing: false }
       }
 
@@ -122,13 +125,13 @@ export async function POST(req: Request) {
         const { smart, eoa } = await getAddresses()
         const clientEOA = (body.walletAddress && /^0x[a-fA-F0-9]{40}$/.test(body.walletAddress)) ? body.walletAddress : undefined
         return [
-          `Smart Account (gasless): ${smart}`,
+          `Agent smart account (shared): ${smart}`,
           `Server EOA (agent key): ${eoa}`,
           clientEOA ? `Connected EOA (your wallet): ${clientEOA}` : undefined,
         ].filter(Boolean).join('\n')
       }
 
-      // Balance (ETH or token)
+  // Balance (native or token)
       if (/\b(balance|balances)\b/.test(text)) {
         const addrCtx = await resolveAddressContext()
         if (addrCtx.missing) {
@@ -149,8 +152,10 @@ export async function POST(req: Request) {
         // Try symbol
         const symMatch = lastUser!.content.match(/\b([A-Z]{2,6})\b/)
         if (symMatch) {
-          const token = resolveTokenBySymbol(symMatch[1])
-          if (token && token.address !== 'ETH') {
+          const { getChainInfo } = await getAgent()
+          const info = await getChainInfo()
+          const token = resolveTokenBySymbol(symMatch[1], info.chainId)
+          if (token && token.address !== 'ETH' && token.address !== 'AVAX') {
             const bal = await getBalance(token.address as any, addrCtx.target as any)
             const formattedBal = parseFloat(bal).toFixed(4)
             try {
@@ -166,11 +171,18 @@ export async function POST(req: Request) {
         const ethBal = await getBalance(undefined, addrCtx.target as any)
         try {
           const { getTokenPrice } = await getAgent()
-          const priceData = await getTokenPrice('ETH')
+          // Decide native symbol based on chain
+          const { getChainInfo } = await getAgent()
+          const info = await getChainInfo()
+          const nativeSym = info.nativeSymbol
+          const priceData = await getTokenPrice(nativeSym)
           const usd = parseFloat(ethBal) * (priceData?.price || 0)
-          return `ETH: ${parseFloat(ethBal).toFixed(4)} ($${fmtUSD(usd)})`
+          return `${nativeSym}: ${parseFloat(ethBal).toFixed(4)} ($${fmtUSD(usd)})`
         } catch {
-          return `ETH: ${parseFloat(ethBal).toFixed(4)}`
+          const { getChainInfo } = await getAgent()
+          const info = await getChainInfo()
+          const nativeSym = info.nativeSymbol
+          return `${nativeSym}: ${parseFloat(ethBal).toFixed(4)}`
         }
       }
 
@@ -252,8 +264,11 @@ export async function POST(req: Request) {
           if (txs.length === 0) {
             return "No recent transactions found."
           }
-          const recent = txs.slice(0, 3).map((tx: any) => 
-            `${tx.status === 'success' ? '✅' : '❌'} ${tx.hash.slice(0, 8)}...${tx.hash.slice(-6)}: ${tx.value} ETH`
+            const { getChainInfo } = await getAgent()
+            const info = await getChainInfo()
+            const nativeSym = info.nativeSymbol
+            const recent = txs.slice(0, 3).map((tx: any) => 
+            `${tx.status === 'success' ? '✅' : '❌'} ${tx.hash.slice(0, 8)}...${tx.hash.slice(-6)}: ${tx.value} ${nativeSym}`
           ).join('\n')
           return `Recent transactions:\n${recent}${txs.length > 3 ? `\n...and ${txs.length - 3} more` : ''}`
         } catch (e) {
@@ -269,7 +284,9 @@ export async function POST(req: Request) {
         const symbol = tr[2]
         const to = tr[3] as `0x${string}`
         if (symbol) {
-          const token = resolveTokenBySymbol(symbol)
+          const { getChainInfo } = await getAgent()
+          const info = await getChainInfo()
+          const token = resolveTokenBySymbol(symbol, info.chainId)
           if (!token) return `Unknown token symbol: ${symbol}`
           const { hash } = await smartTransfer({ tokenAddress: token.address === 'ETH' ? undefined : (token.address as any), amount, destination: to, wait: true })
           return `Transfer submitted. Tx hash: ${hash}`
@@ -294,11 +311,13 @@ export async function POST(req: Request) {
             const match = text.match(/(\d+(?:\.\d+)?)\s*([A-Za-z]{2,6})?\s*(?:to|=>)\s*(0x[a-fA-F0-9]{40})/)
             if (match) {
               const [, amount, symbol, destination] = match
-              const token = symbol ? resolveTokenBySymbol(symbol) : null
+              const { getChainInfo } = await getAgent()
+              const info = await getChainInfo()
+              const token = symbol ? resolveTokenBySymbol(symbol, info.chainId) : null
               transfers.push({
                 destination: destination as `0x${string}`,
                 amount,
-                tokenAddress: token?.address === 'ETH' ? undefined : (token?.address as any)
+                tokenAddress: token && (token.address === 'ETH' || token.address === 'AVAX') ? undefined : (token?.address as any)
               })
             }
           }
@@ -323,7 +342,9 @@ export async function POST(req: Request) {
       if (scheduledMatch) {
         try {
           const [, amount, symbol, destination, timeText] = scheduledMatch
-          const token = symbol ? resolveTokenBySymbol(symbol) : null
+          const { getChainInfo } = await getAgent()
+          const info = await getChainInfo()
+          const token = symbol ? resolveTokenBySymbol(symbol, info.chainId) : null
           
           // Simple time parsing (you can enhance this)
           let scheduleDate = new Date()
@@ -336,7 +357,7 @@ export async function POST(req: Request) {
           
           const { smartTransferAdvanced } = await getAgent()
           const result = await smartTransferAdvanced({
-            tokenAddress: token?.address === 'ETH' ? undefined : (token?.address as any),
+            tokenAddress: token && (token.address === 'ETH' || token.address === 'AVAX') ? undefined : (token?.address as any),
             amount,
             destination: destination as `0x${string}`,
             schedule: scheduleDate,
@@ -355,7 +376,9 @@ export async function POST(req: Request) {
       if (priorityMatch) {
         const [, priority, amount, symbol, destination] = priorityMatch
         try {
-          const token = symbol ? resolveTokenBySymbol(symbol) : null
+          const { getChainInfo } = await getAgent()
+          const info = await getChainInfo()
+          const token = symbol ? resolveTokenBySymbol(symbol, info.chainId) : null
           
           let routing: 'fastest' | 'cheapest' | 'mostReliable' = 'fastest'
           if (priority === 'cheap' || priority === 'economy') routing = 'cheapest'
@@ -363,7 +386,7 @@ export async function POST(req: Request) {
           
           const { smartTransferWithRouting } = await getAgent()
           const result = await smartTransferWithRouting({
-            tokenAddress: token?.address === 'ETH' ? undefined : (token?.address as any),
+            tokenAddress: token && (token.address === 'ETH' || token.address === 'AVAX') ? undefined : (token?.address as any),
             amount,
             destination: destination as `0x${string}`,
             routing,
@@ -382,7 +405,9 @@ export async function POST(req: Request) {
       if (smartMatch) {
         try {
           const [, amount, symbol, destination] = smartMatch
-          const token = symbol ? resolveTokenBySymbol(symbol) : null
+          const { getChainInfo } = await getAgent()
+          const info = await getChainInfo()
+          const token = symbol ? resolveTokenBySymbol(symbol, info.chainId) : null
           
           const { smartTransferAdvanced } = await getAgent()
           const result = await smartTransferAdvanced({
@@ -416,7 +441,7 @@ export async function POST(req: Request) {
     if (!agent) {
       const fb = await fallback()
       if (fb) return NextResponse.json({ ok: true, content: fb, threadId: (config as any).configurable.thread_id })
-      return NextResponse.json({ ok: false, error: "LLM not configured. Set OPENROUTER_API_KEY or OPENAI_API_KEY, or use simple commands: 'address', 'balance', 'transfer 0.01 to 0x..', 'swap 5 USDC to ETH'." }, { status: 429 })
+  return NextResponse.json({ ok: false, error: "LLM not configured. Set OPENROUTER_API_KEY or OPENAI_API_KEY, or use simple commands: 'address', 'balance', 'transfer 0.01 to 0x..', 'swap 5 USDC to WETH'." }, { status: 429 })
     }
 
     try {

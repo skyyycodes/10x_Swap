@@ -1,17 +1,16 @@
 // connectWeb3.ts
 import { createConfig, http } from 'wagmi';
-import { mainnet, polygon, optimism, arbitrum } from 'wagmi/chains';
+import { avalancheFuji, base } from 'wagmi/chains';
 import { getDefaultConfig } from 'connectkit';
 
 export const wagmiConfig = createConfig(
   getDefaultConfig({
-    appName: 'Pharos DEX',
-    chains: [mainnet, polygon, optimism, arbitrum],
+    appName: '10xSwap',
+  // Enable Avalanche Fuji (testnet) and Base mainnet
+  chains: [avalancheFuji, base],
     transports: {
-      [mainnet.id]: http(),
-      [polygon.id]: http(),
-      [optimism.id]: http(),
-      [arbitrum.id]: http(),
+      [avalancheFuji.id]: http(),
+      [base.id]: http(),
     },
     autoConnect: false,
     // walletConnectProjectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
