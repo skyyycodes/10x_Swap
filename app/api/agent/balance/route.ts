@@ -201,7 +201,8 @@ async function getAvalancheNativeBalance(explicitAddress?: string): Promise<Bala
   try {
     if (explicitAddress) {
       const client = createPublicClient({ chain: avalanche, transport: http('https://api.avax.network/ext/bc/C/rpc') });
-      const bal = await client.getBalance({ address: explicitAddress });
+      const address = (explicitAddress.startsWith('0x') ? explicitAddress : `0x${explicitAddress}`) as `0x${string}`;
+      const bal = await client.getBalance({ address });
       return { symbol: 'AVAX', amount: formatTo4(formatUnits(bal, 18)), network: 'avalanche' };
     }
     // Read-only AVAX (native) balance using EOA address derived from PRIVATE_KEY
