@@ -117,10 +117,15 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur dark:bg-[#171717]/95 shadow">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="font-extrabold text-lg md:text-xl tracking-tight">
-          <span className="text-primary dark:text-[#F3C623]">10x</span>
-          <span className="dark:text-white">Swap</span>
-        </Link>
+       <Link href="/" className="flex items-center font-extrabold text-lg md:text-xl tracking-tight">
+        <img 
+          src="/10xswap_logo.png" 
+          alt="10xSwap Logo" 
+          className="h-8 w-8 mr-2"
+        />
+        <span className="text-primary dark:text-[#F3C623]">10x</span>
+        <span className="dark:text-white">Swap</span>
+      </Link>
 
         {/* Desktop navigation - Centered */}
   <nav className="hidden md:flex gap-6 lg:gap-8 absolute left-1/2 -translate-x-1/2 transform">

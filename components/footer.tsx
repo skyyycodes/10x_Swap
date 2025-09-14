@@ -9,10 +9,16 @@ export function Footer() {
         {/* Mobile and Tablet Layout */}
         <div className="flex flex-col space-y-4 md:hidden">
           <div className="text-center">
-            <div className="font-bold text-lg mb-2">
+            <div className="flex items-center font-bold text-lg mb-2">
+              <img 
+                src="/10xswap_logo.png" 
+                alt="10xSwap Logo" 
+                className="h-10 w-10 mr-2"
+              />
               <span className="text-primary dark:text-[#F3C623]">10x</span>
               <span className="dark:text-white">Swap</span>
             </div>
+
             <p className="text-xs text-muted-foreground dark:text-[#F3C623]/60">
               © {new Date().getFullYear()} 10xSwap. All rights reserved.
             </p>
@@ -44,10 +50,16 @@ export function Footer() {
         {/* Desktop Layout */}
         <div className="hidden md:grid h-10 grid-cols-3 items-center">
           <div className="flex items-center gap-3 justify-self-start">
-            <div className="font-bold text-lg">
+            <div className="flex items-center font-bold text-lg mb-2">
+              <img 
+                src="/10xswap_logo.png" 
+                alt="10xSwap Logo" 
+                className="h-10 w-10 mr-2"
+              />
               <span className="text-primary dark:text-[#F3C623]">10x</span>
               <span className="dark:text-white">Swap</span>
             </div>
+
             <p className="text-xs text-muted-foreground dark:text-[#F3C623]/60 ml-4">
               © {new Date().getFullYear()} 10xSwap. All rights reserved.
             </p>
